@@ -4,29 +4,11 @@ import (
     "net/http"
 	"strings"
 	"strconv"
-	
+	"github.com/YaNeAndrey/ya-metrics/internal/storage"
+	//"storage"
 )
 
-type MemStorage struct {
-	gauge map[string]float64
-	counter map[string]int64
-}
-
-func (ms *MemStorage) ChangeGaugeValue(name string, newValue float64) {
-	ms.gauge[name] = newValue
-
-}
-
-func (ms *MemStorage) ChangeCounterValue(name string, newValue int64) {
-	_, isExist := ms.counter[name] 
-	if isExist {
-		ms.counter[name] += newValue
-	} else {
-		ms.counter[name] = newValue
-	}
-}
-
-func checkDataAndUpdateGauge(metricName string,mectricValueStr string, ms *MemStorage) int {
+func checkDataAndUpdateGauge(metricName string,mectricValueStr string, ms *storage.MemStorage) int {
 	metricValue, err := strconv.ParseFloat(mectricValueStr,64) 
 	if err == nil {
 		ms.ChangeGaugeValue(metricName,metricValue)
@@ -36,7 +18,7 @@ func checkDataAndUpdateGauge(metricName string,mectricValueStr string, ms *MemSt
 	}
 }
 
-func checkDataAndUpdateCounter(metricName string,mectricValueStr string, ms *MemStorage) int {
+func checkDataAndUpdateCounter(metricName string,mectricValueStr string, ms *storage.MemStorage) int {
 	metricValue, err := strconv.ParseInt(mectricValueStr, 10,64) 
 	if err == nil {
 		ms.ChangeCounterValue(metricName,metricValue)
@@ -46,7 +28,7 @@ func checkDataAndUpdateCounter(metricName string,mectricValueStr string, ms *Mem
 	}
 }
 
-func checkDataAndUpdateMetric(metricType string, metricName string,mectricValueStr string, ms *MemStorage) int {
+func checkDataAndUpdateMetric(metricType string, metricName string,mectricValueStr string, ms *storage.MemStorage) int {
 	if metricType == "gauge" {
 		return checkDataAndUpdateGauge(metricName,mectricValueStr,ms)
 	} else { // if "counter" == metricType
@@ -54,7 +36,7 @@ func checkDataAndUpdateMetric(metricType string, metricName string,mectricValueS
 	}
 }
 
-func updateMetrics(r *http.Request, ms *MemStorage) int {
+func updateMetrics(r *http.Request, ms *storage.MemStorage) int {
 	if http.MethodPost == r.Method {
 		newMetricsInfo := strings.Split(r.URL.String(), "/")[2:] 
 		if len(newMetricsInfo) < 3 {
@@ -77,9 +59,9 @@ func updateMetrics(r *http.Request, ms *MemStorage) int {
 }
 
 func main() {
-	var ms MemStorage
-	ms.gauge = make(map[string]float64)
-	ms.counter = make(map[string]int64)
+	var ms storage.MemStorage
+	ms.Init()
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/update/", func(w http.ResponseWriter, r *http.Request) {
 		statusCode := updateMetrics(r,&ms)
