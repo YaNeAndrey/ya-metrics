@@ -3,60 +3,10 @@ package main
 import (
     "net/http"
 	"strings"
-	"strconv"
-	"github.com/YaNeAndrey/ya-metrics/internal/storage"
-	//"storage"
+	//"github.com/YaNeAndrey/ya-metrics/internal/storage"
+	"storage"
+	"updater"
 )
-
-func checkDataAndUpdateGauge(metricName string,mectricValueStr string, ms *storage.MemStorage) int {
-	metricValue, err := strconv.ParseFloat(mectricValueStr,64) 
-	if err == nil {
-		ms.ChangeGaugeValue(metricName,metricValue)
-		return http.StatusOK
-	} else {
-		return http.StatusBadRequest
-	}
-}
-
-func checkDataAndUpdateCounter(metricName string,mectricValueStr string, ms *storage.MemStorage) int {
-	metricValue, err := strconv.ParseInt(mectricValueStr, 10,64) 
-	if err == nil {
-		ms.ChangeCounterValue(metricName,metricValue)
-		return http.StatusOK
-	} else {
-		return http.StatusBadRequest
-	}
-}
-
-func checkDataAndUpdateMetric(metricType string, metricName string,mectricValueStr string, ms *storage.MemStorage) int {
-	if metricType == "gauge" {
-		return checkDataAndUpdateGauge(metricName,mectricValueStr,ms)
-	} else { // if "counter" == metricType
-		return checkDataAndUpdateCounter(metricName,mectricValueStr,ms)
-	}
-}
-
-func updateMetrics(r *http.Request, ms *storage.MemStorage) int {
-	if http.MethodPost == r.Method {
-		newMetricsInfo := strings.Split(r.URL.String(), "/")[2:] 
-		if len(newMetricsInfo) < 3 {
-			return http.StatusNotFound
-			
-		}
-		metricType := strings.ToLower(newMetricsInfo[0])
-		metricName := strings.ToLower(newMetricsInfo[1])
-		mectricValueStr := strings.ToLower(newMetricsInfo[2])
-
-		if (metricType == "gauge" || metricType == "counter") {
-			return checkDataAndUpdateMetric(metricType,metricName,mectricValueStr, ms)
-		} else {
-			return http.StatusBadRequest
-		}
-	} else {
-		return http.StatusMethodNotAllowed
-	}
-	
-}
 
 func main() {
 	var ms storage.MemStorage
@@ -64,8 +14,22 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/update/", func(w http.ResponseWriter, r *http.Request) {
-		statusCode := updateMetrics(r,&ms)
-		w.WriteHeader(statusCode)
+		if http.MethodPost == r.Method {
+			newMetricsInfo := strings.Split(r.URL.String(), "/")[2:] 
+			if len(newMetricsInfo) < 3 {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			metricType := strings.ToLower(newMetricsInfo[0])
+			metricName := strings.ToLower(newMetricsInfo[1])
+			metricValueStr := strings.ToLower(newMetricsInfo[2])
+
+
+			statusCode := updater.UpdateMetrics(metricType, metricName,metricValueStr,&ms)
+			w.WriteHeader(statusCode)
+		}else {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
 	})
 
     err := http.ListenAndServe(`:8080`, mux)
