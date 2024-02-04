@@ -65,7 +65,7 @@ func updateMetrics(r *http.Request, ms *MemStorage) int {
 		metricName := strings.ToLower(newMetricsInfo[1])
 		mectricValueStr := strings.ToLower(newMetricsInfo[2])
 
-		if metricType == "gauge" || metricType = "counter" {
+		if (metricType == "gauge" || metricType == "counter") {
 			return checkDataAndUpdateMetric(metricType,metricName,mectricValueStr, ms)
 		} else {
 			return http.StatusBadRequest
