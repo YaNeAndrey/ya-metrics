@@ -3,9 +3,10 @@ package main
 import (
     "net/http"
 	"strings"
-	//"github.com/YaNeAndrey/ya-metrics/internal/storage"
-	"storage"
-	"updater"
+	"github.com/YaNeAndrey/ya-metrics/internal/storage"
+	"github.com/YaNeAndrey/ya-metrics/internal/updater"
+	//"storage"
+	//"updater"
 )
 
 func main() {
