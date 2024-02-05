@@ -4,8 +4,8 @@ import (
     "net/http"
 	"strconv"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
-	//"storage"
 )
+
 func UpdateMetrics(metricType string, metricName string,metricValueStr string, ms *storage.MemStorage) int {
 	switch metricType {
 	case "gauge":
