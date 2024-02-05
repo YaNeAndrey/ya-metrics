@@ -2,7 +2,6 @@ package main
 
 import (
     "net/http"
-	"strings"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/storage"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/handlers"
 )
