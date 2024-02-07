@@ -32,9 +32,12 @@ func sendOneMetricUpdate(ms *storage.MemStorage, c *config.Config, metrType stri
     resp, err := client.Do(r)
 
 	_ = resp
+
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	defer resp.Body.Close()
 }
 
 func StartMetricsMonitor(ms *storage.MemStorage, c *config.Config){
