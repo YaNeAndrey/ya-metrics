@@ -5,5 +5,5 @@ type StorageRepo interface {
 	UpdateCounterMetric(name string, newValue int64)
 	SetCounterMetric(name string, newValue int64)
 	ListAllGaugeMetrics() map[string]float64
-	ListAllCounterMetric() map[string]int64
+	ListAllCounterMetrics() map[string]int64
 }

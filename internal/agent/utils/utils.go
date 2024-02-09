@@ -14,16 +14,22 @@ import (
 func sendAllMetricsUpdates(ms *storage.MemStorage, c *config.Config){
 	for metrName, metrValue := range ms.ListAllGaugeMetrics() {
 		//send post for gauge metrics
-		sendOneMetricUpdate(ms,c,"gauge",metrName,fmt.Sprint(metrValue))
+		err := sendOneMetricUpdate(c,"gauge",metrName,fmt.Sprint(metrValue))
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
-	for metrName, metrValue := range ms.ListAllCounterMetric() {
+	for metrName, metrValue := range ms.ListAllCounterMetrics() {
 		//send post for counter metrics
-		sendOneMetricUpdate(ms,c,"counter",metrName,fmt.Sprint(metrValue))
+		err := sendOneMetricUpdate(c,"counter",metrName,fmt.Sprint(metrValue))
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 	ms.SetCounterMetric("PollCount",0)
 }
 
-func sendOneMetricUpdate(ms *storage.MemStorage, c *config.Config, metrType string, metrName string, metrValue string){
+func sendOneMetricUpdate(c *config.Config, metrType string, metrName string, metrValue string) error{
 	urlStr := fmt.Sprintf("%s://%s:%d/update/%s/%s/%s",c.Scheme(),c.SrvAddr(),c.SrvPort(),metrType,metrName,metrValue)
 	client := &http.Client{}
     r, _ := http.NewRequest("POST", urlStr, nil)
@@ -32,12 +38,11 @@ func sendOneMetricUpdate(ms *storage.MemStorage, c *config.Config, metrType stri
     resp, err := client.Do(r)
 
 	_ = resp
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	defer resp.Body.Close()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func StartMetricsMonitor(ms *storage.MemStorage, c *config.Config){

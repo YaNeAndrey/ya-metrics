@@ -21,7 +21,7 @@ func HandleUpdateMetrics(w http.ResponseWriter, r *http.Request,ms *storage.MemS
 		return
 	}
 */
-	metricType := newMetricsInfo[0]
+	metricType := strings.ToLower(newMetricsInfo[0])
 	metricName := newMetricsInfo[1]
 	metricValueStr := newMetricsInfo[2]
 	statusCode := updateMetrics(metricType, metricName,metricValueStr,ms)

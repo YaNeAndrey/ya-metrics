@@ -29,7 +29,7 @@ func (ms *MemStorage) ListAllGaugeMetrics() map[string]float64{
 	return ms.gaugeMetrics
 }
 
-func (ms *MemStorage) ListAllCounterMetric()map[string]int64{
+func (ms *MemStorage) ListAllCounterMetrics()map[string]int64{
 	return ms.counterMetrics
 }
 
