@@ -7,6 +7,7 @@ import (
 
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHandleUpdateMetrics(t *testing.T) {
@@ -53,6 +54,9 @@ func TestHandleUpdateMetrics(t *testing.T) {
             h(w, tt.args.r)
 			result := w.Result()
 			assert.Equal(t, tt.want, result.StatusCode)
+
+			err := result.Body.Close()
+            require.NoError(t, err)
 		})
 	}
 }
