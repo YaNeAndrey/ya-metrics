@@ -58,8 +58,15 @@ func HandleGetRoot(w http.ResponseWriter, r *http.Request,ms *storage.MemStorage
 }
 
 func HandleGetMetricValue(w http.ResponseWriter, r *http.Request,ms *storage.MemStorage){
-	metricType := chi.URLParam(r, "type")
+	metricType := strings.ToLower(chi.URLParam(r, "type"))
 	metricName := chi.URLParam(r, "name")
+
+	if metricType == "" || metricName == ""{
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(""))
+		return
+	}
+
 
 	body := ""
 	statusCode := http.StatusBadRequest
@@ -73,7 +80,6 @@ func HandleGetMetricValue(w http.ResponseWriter, r *http.Request,ms *storage.Mem
 	default:
 		body,statusCode = "", http.StatusNotFound
 	}
-	_ = statusCode
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(statusCode)
@@ -91,6 +97,7 @@ func HandlePostUpdateMetricValue(w http.ResponseWriter, r *http.Request,ms *stor
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+	
 	statusCode := updateMetric(metricType, metricName,metricValueStr,ms)
 	w.WriteHeader(statusCode)
 }

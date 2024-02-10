@@ -12,9 +12,10 @@ func main() {
 
 	ms := storage.NewMemStorage()
 
-	ms.UpdateGaugeMetric("firstGauge", 123)
-	ms.UpdateGaugeMetric("SecondGauge", 1241254235)
-	ms.UpdateCounterMetric("CounterMetric", 1241254235)
+	ms.UpdateGaugeMetric("firstGauge", 123.25)
+	ms.UpdateGaugeMetric("SecondGauge", 2.1)
+	ms.UpdateCounterMetric("CounterMetric", 444)
+
 	
 	r := chi.NewRouter()
 
