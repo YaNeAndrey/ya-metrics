@@ -108,7 +108,7 @@ func getGaugeMetricValue(metricName string, ms *storage.MemStorage) (string, int
 
 	value, isExist := allGaugeMetrics[metricName]
 	if isExist {
-		valueStr := strconv.FormatFloat(value, 'f', 0, 64)
+		valueStr := strconv.FormatFloat(value, 'f', -1, 64)
 		return valueStr, http.StatusOK
 	} else {
 		return "", http.StatusNotFound
