@@ -130,7 +130,7 @@ func TestHandleGetMetricValue(t *testing.T) {
 		args args
 		want want
 	}{
-		/*{
+	 /* {
 			name: "First test",
 			args: args{
 				req: httptest.NewRequest(http.MethodGet, "/value/counter/metric", nil),
@@ -140,9 +140,9 @@ func TestHandleGetMetricValue(t *testing.T) {
 				value: "124",
 				statusCode: http.StatusOK,
 			},
-		},*/
+		},
 		
-		
+		*/
 		{
 			name: "Second test",
 			args: args{

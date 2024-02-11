@@ -61,13 +61,6 @@ func HandleGetMetricValue(w http.ResponseWriter, r *http.Request,ms *storage.Mem
 	metricType := strings.ToLower(chi.URLParam(r, "type"))
 	metricName := chi.URLParam(r, "name")
 
-	if metricType == "" || metricName == ""{
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(""))
-		return
-	}
-
-
 	body := ""
 	statusCode := http.StatusBadRequest
 

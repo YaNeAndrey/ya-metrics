@@ -46,3 +46,18 @@ func (c *Config) ReportInterval() int{
 	return c.reportInterval
 }
 
+func (c *Config) SetSrvAddr(srvAddr string) {
+	c.srvAddr = srvAddr
+}
+
+func (c *Config) SetSrvPort(srvPort int) {
+	c.srvPort = srvPort
+}
+
+func (c *Config) SetPollInterval(pollInterval int) {
+	c.pollInterval = pollInterval
+}
+
+func (c *Config) SetReportInterval(reportInterval int) {
+	c.reportInterval = reportInterval
+}
