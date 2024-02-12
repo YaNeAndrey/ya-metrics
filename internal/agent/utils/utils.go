@@ -4,7 +4,7 @@ import (
 	"runtime"
 	"fmt"
 	"net/http"
-	//"log"
+	"log"
 	"time"
 	"math/rand"
 	
