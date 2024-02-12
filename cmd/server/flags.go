@@ -30,7 +30,8 @@ func parseFlags()  *config.Config {
 
 
 	srvEndpointEnv, isExist := os.LookupEnv("ADDRESS")
-	srvAddr,srvPort,err := "",0,errors.New("")
+	srvAddr,srvPort := "",0
+	var err error
 	if !isExist {
 		srvAddr,srvPort,err = parseEndpoint(*srvEndpoit)
 	} else {

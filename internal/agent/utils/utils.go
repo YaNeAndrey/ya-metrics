@@ -18,7 +18,7 @@ func sendAllMetricsUpdates(ms *storage.MemStorage, c *config.Config){
 		err := sendOneMetricUpdate(c,"gauge",metrName,fmt.Sprint(metrValue))
 		if err != nil {
 			//log.Fatal(err)
-			//log.Println(err)
+			log.Println(err)
 		}
 	}
 	for metrName, metrValue := range ms.ListAllCounterMetrics() {
@@ -26,7 +26,7 @@ func sendAllMetricsUpdates(ms *storage.MemStorage, c *config.Config){
 		err := sendOneMetricUpdate(c,"counter",metrName,fmt.Sprint(metrValue))
 		if err != nil {
 			//log.Fatal(err)
-			//log.Println(err)
+			log.Println(err)
 		}
 	}
 	ms.SetCounterMetric("PollCount",0)
