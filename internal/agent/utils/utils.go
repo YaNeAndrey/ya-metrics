@@ -2,13 +2,14 @@ package utils
 
 import (
 	"runtime"
-	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 	"fmt"
-	"github.com/YaNeAndrey/ya-metrics/internal/agent/config"
 	"net/http"
-	"log"
+	//"log"
 	"time"
 	"math/rand"
+	
+	"github.com/YaNeAndrey/ya-metrics/internal/agent/config"
+	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 )
 
 func sendAllMetricsUpdates(ms *storage.MemStorage, c *config.Config){
@@ -16,14 +17,16 @@ func sendAllMetricsUpdates(ms *storage.MemStorage, c *config.Config){
 		//send post for gauge metrics
 		err := sendOneMetricUpdate(c,"gauge",metrName,fmt.Sprint(metrValue))
 		if err != nil {
-			log.Fatal(err)
+			//log.Fatal(err)
+			//log.Println(err)
 		}
 	}
 	for metrName, metrValue := range ms.ListAllCounterMetrics() {
 		//send post for counter metrics
 		err := sendOneMetricUpdate(c,"counter",metrName,fmt.Sprint(metrValue))
 		if err != nil {
-			log.Fatal(err)
+			//log.Fatal(err)
+			//log.Println(err)
 		}
 	}
 	ms.SetCounterMetric("PollCount",0)
@@ -37,11 +40,10 @@ func sendOneMetricUpdate(c *config.Config, metrType string, metrName string, met
 
     resp, err := client.Do(r)
 
-	_ = resp
-	defer resp.Body.Close()
 	if err != nil {
 		return err
 	}
+	resp.Body.Close()
 	return nil
 }
 
