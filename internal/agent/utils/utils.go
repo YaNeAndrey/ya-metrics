@@ -7,7 +7,9 @@ import (
 	"log"
 	"time"
 	"math/rand"
+	"net/url"
 	
+	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	"github.com/YaNeAndrey/ya-metrics/internal/agent/config"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 )
@@ -15,7 +17,7 @@ import (
 func sendAllMetricsUpdates(ms *storage.MemStorage, c *config.Config){
 	for metrName, metrValue := range ms.ListAllGaugeMetrics() {
 		//send post for gauge metrics
-		err := sendOneMetricUpdate(c,"gauge",metrName,fmt.Sprint(metrValue))
+		err := sendOneMetricUpdate(c,constants.GaugeMetricType, metrName,fmt.Sprint(metrValue))
 		if err != nil {
 			//log.Fatal(err)
 			log.Println(err)
@@ -23,7 +25,7 @@ func sendAllMetricsUpdates(ms *storage.MemStorage, c *config.Config){
 	}
 	for metrName, metrValue := range ms.ListAllCounterMetrics() {
 		//send post for counter metrics
-		err := sendOneMetricUpdate(c,"counter",metrName,fmt.Sprint(metrValue))
+		err := sendOneMetricUpdate(c,constants.CounterMetricType, metrName,fmt.Sprint(metrValue))
 		if err != nil {
 			//log.Fatal(err)
 			log.Println(err)
@@ -33,7 +35,13 @@ func sendAllMetricsUpdates(ms *storage.MemStorage, c *config.Config){
 }
 
 func sendOneMetricUpdate(c *config.Config, metrType string, metrName string, metrValue string) error{
-	urlStr := fmt.Sprintf("%s://%s:%d/update/%s/%s/%s",c.Scheme(),c.SrvAddr(),c.SrvPort(),metrType,metrName,metrValue)
+	hostname := c.GetHostnameWithScheme()
+	urlStr, err := url.JoinPath(hostname,"update",metrType,metrName,metrValue)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
 	client := &http.Client{}
     r, _ := http.NewRequest("POST", urlStr, nil)
     r.Header.Add("Content-Type", "text/plain")
@@ -48,11 +56,11 @@ func sendOneMetricUpdate(c *config.Config, metrType string, metrName string, met
 }
 
 func StartMetricsMonitor(ms *storage.MemStorage, c *config.Config){
-	iterCount := c.ReportInterval()/c.PollInterval()
+	iterCount := int(c.ReportInterval()/c.PollInterval())
 	for{
 		for i := 0; i < iterCount; i++ {
 			collectNewMetrics(ms)
-			time.Sleep(time.Duration(c.PollInterval()) * time.Second)
+			time.Sleep(c.PollInterval())
 		}
 		sendAllMetricsUpdates(ms,c)
 	}

@@ -7,9 +7,10 @@ import (
 	"html/template"
 	"fmt"
 
-	
-	"github.com/go-chi/chi/v5"
+	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
+
+	"github.com/go-chi/chi/v5"
 )
 
 
@@ -65,11 +66,10 @@ func HandleGetMetricValue(w http.ResponseWriter, r *http.Request,ms *storage.Mem
 	statusCode := http.StatusBadRequest
 
 	switch metricType {
-	case "gauge": 
+	case constants.GaugeMetricType: 
 		body,statusCode = getGaugeMetricValue(metricName,ms)
-	case "counter":{
+	case constants.CounterMetricType:
 		body,statusCode = getCounterMetricValue(metricName,ms)
-	}
 	default:
 		body,statusCode = "", http.StatusNotFound
 	}
@@ -85,7 +85,6 @@ func HandlePostUpdateMetricValue(w http.ResponseWriter, r *http.Request,ms *stor
 	metricType := strings.ToLower(chi.URLParam(r, "type"))
 	metricName := chi.URLParam(r, "name")
 	metricValueStr := chi.URLParam(r, "value")
-
 	if metricType == "" || metricName == "" || metricValueStr == "" {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -121,9 +120,9 @@ func getCounterMetricValue(metricName string, ms *storage.MemStorage) (string, i
 
 func updateMetric(metricType string, metricName string,metricValueStr string, ms *storage.MemStorage) int {
 	switch metricType {
-	case "gauge":
+	case constants.GaugeMetricType:
 		return checkDataAndUpdateGauge(metricName,metricValueStr,ms)
-	case "counter":
+	case constants.CounterMetricType:
 		return checkDataAndUpdateCounter(metricName,metricValueStr,ms)
 	default:
 		return http.StatusBadRequest

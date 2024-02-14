@@ -2,11 +2,19 @@ package utils
 
 import (
 	"testing"
+	"strings"
+	"net/http/httptest"
+	"net/http"
+	"log"
+	"strconv"
 
-	
-    //"github.com/stretchr/testify/assert"
 	"github.com/YaNeAndrey/ya-metrics/internal/agent/config"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
+	"github.com/YaNeAndrey/ya-metrics/internal/server/handlers"
+	"github.com/YaNeAndrey/ya-metrics/internal/constants"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/go-chi/chi/v5"
 )
 
 func Test_sendAllMetricsUpdates(t *testing.T) {
@@ -18,13 +26,6 @@ func Test_sendAllMetricsUpdates(t *testing.T) {
 		name string
 		args args
 	}{
-		{
-			name: "First test",
-			args: args{
-				ms: storage.NewMemStorage(),
-				c: config.NewConfig(),
-			},
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -43,50 +44,73 @@ func Test_sendOneMetricUpdate(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
+		ms 		*storage.MemStorage
 		wantErr bool
 	}{
-		/*{
-			name: "First test. With error",
+		{
+			name: "First test. Update gauge metric",
 			args: args {
 				c: config.NewConfig(),
-				metrType: "gauge",
-				metrName: "SomeMetric",
+				metrType: constants.GaugeMetricType,
+				metrName: "gaugeMetric",
 				metrValue: "333.3",
 			},
+			ms: storage.NewMemStorage(),
 			wantErr: false,
 		},
-		*/
+
+		{
+			name: "Second test. Update counter metric",
+			args: args {
+				c: config.NewConfig(),
+				metrType: constants.CounterMetricType,
+				metrName: "counterMetric",
+				metrValue: "111",
+			},
+			ms: storage.NewMemStorage(),
+			wantErr: false,
+		},
+		
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := sendOneMetricUpdate(tt.args.c, tt.args.metrType, tt.args.metrName, tt.args.metrValue); (err != nil) != tt.wantErr {
-				t.Errorf("sendOneMetricUpdate() error = %v, wantErr %v", err, tt.wantErr)
+			r := chi.NewRouter()
+			r.Route("/update", func(r chi.Router) {
+				r.Post("/{type}/{name}/{value}", func(rw http.ResponseWriter, r *http.Request) {
+					handlers.HandlePostUpdateMetricValue(rw,r,tt.ms)
+				})
+			})
+
+			server := httptest.NewServer(r)
+			defer server.Close()
+		
+			host := strings.Split(server.URL,"/")[2]
+			hostBufSlice := strings.Split(host,":")
+
+			hostname := hostBufSlice[0]
+			port,_ := strconv.Atoi(hostBufSlice[1])
+			
+			tt.args.c.SetSrvAddr(hostname)
+			tt.args.c.SetSrvPort(port)
+
+			err:= sendOneMetricUpdate(tt.args.c, tt.args.metrType, tt.args.metrName, tt.args.metrValue)
+			if err != nil{
+				log.Fatal(err)
 			}
-			//err := sendOneMetricUpdate(tt.args.c, tt.args.metrType, tt.args.metrName, tt.args.metrValue)
-			//if tt.wantErr {
-			//	assert.EqualErrorf(t, err, "expectedErrorMsg", "Error should be: %v, got: %v", expectedErrorMsg, err)
-			//}
+
+			switch tt.args.metrType {
+				case constants.GaugeMetricType: 
+					realValue := strconv.FormatFloat(tt.ms.ListAllGaugeMetrics()[tt.args.metrName], 'f', -1, 64)
+					assert.Equal(t,tt.args.metrValue,realValue)
+
+				case constants.CounterMetricType:
+					realValue := strconv.FormatInt(tt.ms.ListAllCounterMetrics()[tt.args.metrName], 10)
+					log.Println(realValue)
+					assert.Equal(t,tt.args.metrValue,realValue)
+				}
 		})
 	}
 }
-
-func TestStartMetricsMonitor(t *testing.T) {
-	type args struct {
-		ms *storage.MemStorage
-		c  *config.Config
-	}
-	tests := []struct {
-		name string
-		args args
-	}{
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			StartMetricsMonitor(tt.args.ms, tt.args.c)
-		})
-	}
-}
-
 
 func Test_collectNewMetrics(t *testing.T) {
 	type args struct {
@@ -97,7 +121,7 @@ func Test_collectNewMetrics(t *testing.T) {
 		args args
 	}{
 		{
-			name: "First test",
+			name: "First test. Collect all metrics",
 			args: args{
 				ms: storage.NewMemStorage(),
 			},
@@ -106,6 +130,8 @@ func Test_collectNewMetrics(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			collectNewMetrics(tt.args.ms)
+			assert.Equal(t,28,len(tt.args.ms.ListAllGaugeMetrics()))
+			assert.Equal(t,1,len(tt.args.ms.ListAllCounterMetrics()))
 		})
 	}
 }

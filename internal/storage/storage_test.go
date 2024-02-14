@@ -3,6 +3,7 @@ package storage
 import (
 	"reflect"
 	"testing"
+	
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,7 +34,7 @@ func TestMemStorage_UpdateGaugeMetric(t *testing.T) {
 		args args
 	}{
 		{
-		name: "First test",
+		name: "First test. Create Gauge metric",
 		ms: NewMemStorage(),
 		args: args{
 			name: "SomeGaugeMetric",
@@ -41,7 +42,7 @@ func TestMemStorage_UpdateGaugeMetric(t *testing.T) {
 		},
 	},
 	{
-		name: "Second test",
+		name: "Second test. Update Gauge metric",
 		ms: &MemStorage{
 			gaugeMetrics: map[string]float64{
 				"SomeGaugeMetric": 1,
@@ -73,7 +74,7 @@ func TestMemStorage_UpdateCounterMetric(t *testing.T) {
 		args args
 	}{
 		{
-			name: "First test",
+			name: "First test. Create counter metric",
 			ms: NewMemStorage(),
 			args: args{
 				name: "SomeCounterMetric",
@@ -81,7 +82,7 @@ func TestMemStorage_UpdateCounterMetric(t *testing.T) {
 			},
 		},
 		{
-			name: "Second test",
+			name: "Second test. Update cauge metric",
 			ms: &MemStorage{
 				gaugeMetrics: make(map[string]float64),
 				counterMetrics: map[string]int64{
@@ -110,12 +111,12 @@ func TestMemStorage_ListAllGaugeMetrics(t *testing.T) {
 		want map[string]float64
 	}{
 		{
-			name: "First test",
+			name: "First test. Get empty list",
 			ms: NewMemStorage(),
 			want: make(map[string]float64),
 		},
 		{
-			name: "Second test",
+			name: "Second test. Get not empty list",
 			ms: &MemStorage{
 				gaugeMetrics: map[string]float64{
 					"SomeGaugeMetric": 5,
@@ -143,12 +144,12 @@ func TestMemStorage_ListAllCounterMetric(t *testing.T) {
 		want map[string]int64
 	}{
 		{
-			name: "First test",
+			name: "First test. Get empty list",
 			ms: NewMemStorage(),
 			want: make(map[string]int64),
 		},
 		{
-			name: "Second test",
+			name: "Second test. Get not empty list",
 			ms: &MemStorage{
 				gaugeMetrics: make(map[string]float64),
 				counterMetrics: map[string]int64{
@@ -180,7 +181,7 @@ func TestMemStorage_SetCounterMetric(t *testing.T) {
 		args args
 	}{
 		{
-			name: "First test",
+			name: "First test. Set counter metric",
 			ms: NewMemStorage(),
 			args: args{
 				name: "SomeMetric",

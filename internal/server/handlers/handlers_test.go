@@ -7,12 +7,12 @@ import (
 	"io"
 	"log"
 	"strings"
-
+	"context"
 
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/go-chi/chi/v5"
-	//"github.com/stretchr/testify/require"
 )
 
 func TestHandleGetRoot(t *testing.T) {
@@ -68,7 +68,7 @@ func TestHandleGetRoot(t *testing.T) {
 		want want
 	}{
 		{
-			name: "First test",
+			name: "First test. Check root handler",
 			args: args{
 				req: httptest.NewRequest(http.MethodGet, "/", nil),
 				ms: memStorage,
@@ -111,6 +111,15 @@ func TestHandleGetRoot(t *testing.T) {
 	}
 }
 
+func AddURLParamsForChi(r *http.Request,urlParams map[string]string) *http.Request{
+	rctx := chi.NewRouteContext()
+	for key,value := range(urlParams) {
+		rctx.URLParams.Add(key, value)
+	}
+	r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
+	return r
+}
+
 func TestHandleGetMetricValue(t *testing.T) {
 	
 	memStorage := storage.NewMemStorage()
@@ -130,34 +139,34 @@ func TestHandleGetMetricValue(t *testing.T) {
 		args args
 		want want
 	}{
-	 /* {
-			name: "First test",
+	
+		{
+			
+			name: "First test. Get metric value by name and type",
 			args: args{
-				req: httptest.NewRequest(http.MethodGet, "/value/counter/metric", nil),
-				ms: memStorage,
+			req: AddURLParamsForChi(httptest.NewRequest(http.MethodGet, "/value/counter/metric", nil),map[string]string {"type" : "counter", "name" : "metric"}),
+			ms: memStorage,
 			},
 			want: want{
 				value: "124",
 				statusCode: http.StatusOK,
 			},
-		},
-		
-		*/
+		},		
 		{
-			name: "Second test",
+			name: "Second test. Trying to get metric value without name",
 			args: args{
 				req: httptest.NewRequest(http.MethodGet, "/value/counter", nil),
 				ms: memStorage,
 			},
 			want: want{
-				value: "404 page not found\n", // ??? WTF??
+				value: "",
 				statusCode: http.StatusNotFound,
 			},
 		},
 		{
-			name: "Third test",
+			name: "Third test. Trying to get metric value with incorrect metric type",
 			args: args{
-				req: httptest.NewRequest(http.MethodGet, "/value/list/GaugeMetric", nil),
+				req: AddURLParamsForChi(httptest.NewRequest(http.MethodGet, "/value/list/GaugeMetric", nil),map[string]string {"type" : "list", "name" : "GaugeMetric"}),
 				ms: memStorage,
 			},
 			want: want{
@@ -171,7 +180,9 @@ func TestHandleGetMetricValue(t *testing.T) {
 			w := httptest.NewRecorder()
             
 			r := chi.NewRouter()
-
+			r.NotFound(func(rw http.ResponseWriter, r *http.Request) {
+				rw.WriteHeader(http.StatusNotFound)
+			})
 			r.Route("/value", func(r chi.Router) {
 				r.Get("/{type}/{name}",func(rw http.ResponseWriter, r *http.Request) {
 					HandleGetMetricValue(rw,tt.args.req,tt.args.ms)
@@ -191,9 +202,6 @@ func TestHandleGetMetricValue(t *testing.T) {
 			}
 
 			assert.Equal(t,tt.want.value,string(bodyStr))
-
-
-			//HandleGetMetricValue(tt.args.w, tt.args.r, tt.args.ms)
 		})
 	}
 }
@@ -209,7 +217,7 @@ func TestHandlePostUpdateMetricValue(t *testing.T) {
 		want int
 	}{
 		{
-			name: "First test",
+			name: "First test. Update gauge metric",
 			args: args{
 				req: httptest.NewRequest(http.MethodPost, "/update/gauge/NewMetric/123", nil),
 				ms: storage.NewMemStorage(),
@@ -217,7 +225,7 @@ func TestHandlePostUpdateMetricValue(t *testing.T) {
 			want: http.StatusOK,
 		},
 		{
-			name: "Second test",
+			name: "Second test. Trying to update counter metric with incorrect value",
 			args: args{
 				req: httptest.NewRequest(http.MethodPost, "/update/counter/NewMetric/value", nil),
 				ms: storage.NewMemStorage(),
@@ -228,7 +236,6 @@ func TestHandlePostUpdateMetricValue(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
             w := httptest.NewRecorder()
-            
 			r := chi.NewRouter()
 
 			r.Route("/update", func(r chi.Router) {
@@ -267,7 +274,7 @@ func Test_getGaugeMetricValue(t *testing.T) {
 		want  want
 	}{
 		{
-			name: "First test",
+			name: "First test. Get gauge metric value",
 			args: args{
 				metricName: "SomeMetric",
 				ms: memStorage,
@@ -278,7 +285,7 @@ func Test_getGaugeMetricValue(t *testing.T) {
 			},
 		},
 		{
-			name: "Second test",
+			name: "Second test. Trying to get value of a non-existent metric",
 			args: args{
 				metricName: "SomeMetric2",
 				ms: memStorage,
@@ -317,7 +324,7 @@ func Test_getCounterMetricValue(t *testing.T) {
 		want  want
 	}{
 		{
-			name: "First test",
+			name: "First test. Get counter metric value",
 			args: args{
 				metricName: "SomeMetric",
 				ms: memStorage,
@@ -328,7 +335,7 @@ func Test_getCounterMetricValue(t *testing.T) {
 			},
 		},
 		{
-			name: "Second test",
+			name: "Second test. Trying to get value of a non-existent metric",
 			args: args{
 				metricName: "SomeMetric2",
 				ms: memStorage,
@@ -361,7 +368,7 @@ func Test_updateMetric(t *testing.T) {
 		want int
 	}{
 		{
-			name: "First test. Add gauge metric",
+			name: "First test. Update gauge metric",
 			args: args{
 				metricType: "gauge",
 				metricName: "SomeMetric",
@@ -371,7 +378,7 @@ func Test_updateMetric(t *testing.T) {
 			want: http.StatusOK,
 		},		
 		{
-			name: "Second test. Add counter metric",
+			name: "Second test. Update counter metric",
 			args: args{
 				metricType: "counter",
 				metricName: "SomeMetric",
@@ -381,7 +388,7 @@ func Test_updateMetric(t *testing.T) {
 			want: http.StatusOK,
 			},		
 			{
-				name: "Third test. Incorrect metric type ",
+				name: "Third test. Trying to update metric with unknown type",
 				args: args{
 					metricType: "IncorrectMetricType",
 					metricName: "SomeMetric",
@@ -410,7 +417,7 @@ func Test_checkDataAndUpdateGauge(t *testing.T) {
 		want int
 	}{
 		{
-			name: "First test",
+			name: "First test. Update gauge metric",
 			args: args{
 				metricName: "SomeMetric",
 				metricValueStr: "123",
@@ -419,7 +426,7 @@ func Test_checkDataAndUpdateGauge(t *testing.T) {
 			want: http.StatusOK,
 		},
 		{
-			name: "Second test. Incorrect value",
+			name: "Second test. Trying to update gauge metric with incorrect value",
 			args: args{
 				metricName: "SomeMetric",
 				metricValueStr: "incorrect",
@@ -449,7 +456,7 @@ func Test_checkDataAndUpdateCounter(t *testing.T) {
 		want int
 	}{
 		{
-			name: "First test",
+			name: "First test. Update counter metric",
 			args: args{
 				metricName: "SomeMetric",
 				metricValueStr: "123",
@@ -458,7 +465,7 @@ func Test_checkDataAndUpdateCounter(t *testing.T) {
 			want: http.StatusOK,
 		},
 		{
-			name: "Second test. Incorrect value",
+			name: "Second test. Trying to update counter metric with incorrect value",
 			args: args{
 				metricName: "SomeMetric",
 				metricValueStr: "incorrect",
