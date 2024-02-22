@@ -1,18 +1,17 @@
 package handlers
 
 import (
-    "net/http"
+	"fmt"
+	"html/template"
+	"net/http"
 	"strconv"
 	"strings"
-	"html/template"
-	"fmt"
 
 	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 
 	"github.com/go-chi/chi/v5"
 )
-
 
 const tplStr = `<table>
     <thead>
@@ -31,34 +30,32 @@ const tplStr = `<table>
     </tbody>
 </table>`
 
-
-func HandleGetRoot(w http.ResponseWriter, r *http.Request,ms *storage.MemStorage){
-	
+func HandleGetRoot(w http.ResponseWriter, r *http.Request, ms *storage.MemStorage) {
 	bufMetricMap := make(map[string]string)
 
-	for key, value := range(ms.ListAllGaugeMetrics()){
-		bufMetricMap[key] = fmt.Sprintf("%v",value)
+	for key, value := range ms.ListAllGaugeMetrics() {
+		bufMetricMap[key] = fmt.Sprintf("%v", value)
 	}
-	for key, value := range(ms.ListAllCounterMetrics()){
-		bufMetricMap[key] = fmt.Sprintf("%v",value)
+	for key, value := range ms.ListAllCounterMetrics() {
+		bufMetricMap[key] = fmt.Sprintf("%v", value)
 	}
 
 	tpl, err := template.New("table").Parse(tplStr)
-    if err != nil {
-        w.WriteHeader(http.StatusInternalServerError)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		return
-    }
+	}
 
-    err = tpl.Execute(w, bufMetricMap)
-    if err != nil {
-        w.WriteHeader(http.StatusInternalServerError)
+	err = tpl.Execute(w, bufMetricMap)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		return
-    }
+	}
 
 	w.Header().Set("Content-Type", "text/html")
 }
 
-func HandleGetMetricValue(w http.ResponseWriter, r *http.Request,ms *storage.MemStorage){
+func HandleGetMetricValue(w http.ResponseWriter, r *http.Request, ms *storage.MemStorage) {
 	metricType := strings.ToLower(chi.URLParam(r, "type"))
 	metricName := chi.URLParam(r, "name")
 
@@ -66,22 +63,21 @@ func HandleGetMetricValue(w http.ResponseWriter, r *http.Request,ms *storage.Mem
 	statusCode := http.StatusBadRequest
 
 	switch metricType {
-	case constants.GaugeMetricType: 
-		body,statusCode = getGaugeMetricValue(metricName,ms)
+	case constants.GaugeMetricType:
+		body, statusCode = getGaugeMetricValue(metricName, ms)
 	case constants.CounterMetricType:
-		body,statusCode = getCounterMetricValue(metricName,ms)
+		body, statusCode = getCounterMetricValue(metricName, ms)
 	default:
-		body,statusCode = "", http.StatusNotFound
+		body, statusCode = "", http.StatusNotFound
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(statusCode)
 	w.Write([]byte(body))
 
-	
 }
 
-func HandlePostUpdateMetricValue(w http.ResponseWriter, r *http.Request,ms *storage.MemStorage){
+func HandlePostUpdateMetricValue(w http.ResponseWriter, r *http.Request, ms *storage.MemStorage) {
 	metricType := strings.ToLower(chi.URLParam(r, "type"))
 	metricName := chi.URLParam(r, "name")
 	metricValueStr := chi.URLParam(r, "value")
@@ -89,11 +85,10 @@ func HandlePostUpdateMetricValue(w http.ResponseWriter, r *http.Request,ms *stor
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	
-	statusCode := updateMetric(metricType, metricName,metricValueStr,ms)
+
+	statusCode := updateMetric(metricType, metricName, metricValueStr, ms)
 	w.WriteHeader(statusCode)
 }
-
 
 func getGaugeMetricValue(metricName string, ms *storage.MemStorage) (string, int) {
 	allGaugeMetrics := ms.ListAllGaugeMetrics()
@@ -109,40 +104,40 @@ func getGaugeMetricValue(metricName string, ms *storage.MemStorage) (string, int
 
 func getCounterMetricValue(metricName string, ms *storage.MemStorage) (string, int) {
 	allCounterMetrics := ms.ListAllCounterMetrics()
-	value,isExist := allCounterMetrics[metricName]
+	value, isExist := allCounterMetrics[metricName]
 	if isExist {
 		valueStr := strconv.FormatInt(value, 10)
-			return valueStr, http.StatusOK
+		return valueStr, http.StatusOK
 	} else {
 		return "", http.StatusNotFound
 	}
 }
 
-func updateMetric(metricType string, metricName string,metricValueStr string, ms *storage.MemStorage) int {
+func updateMetric(metricType string, metricName string, metricValueStr string, ms *storage.MemStorage) int {
 	switch metricType {
 	case constants.GaugeMetricType:
-		return checkDataAndUpdateGauge(metricName,metricValueStr,ms)
+		return checkDataAndUpdateGauge(metricName, metricValueStr, ms)
 	case constants.CounterMetricType:
-		return checkDataAndUpdateCounter(metricName,metricValueStr,ms)
+		return checkDataAndUpdateCounter(metricName, metricValueStr, ms)
 	default:
 		return http.StatusBadRequest
 	}
 }
 
-func checkDataAndUpdateGauge(metricName string,metricValueStr string, ms *storage.MemStorage) int {
-	metricValue, err := strconv.ParseFloat(metricValueStr,64) 
+func checkDataAndUpdateGauge(metricName string, metricValueStr string, ms *storage.MemStorage) int {
+	metricValue, err := strconv.ParseFloat(metricValueStr, 64)
 	if err == nil {
-		ms.UpdateGaugeMetric(metricName,metricValue)
+		ms.UpdateGaugeMetric(metricName, metricValue)
 		return http.StatusOK
 	} else {
 		return http.StatusBadRequest
 	}
 }
 
-func checkDataAndUpdateCounter(metricName string,metricValueStr string, ms *storage.MemStorage) int {
-	metricValue, err := strconv.ParseInt(metricValueStr, 10,64) 
+func checkDataAndUpdateCounter(metricName string, metricValueStr string, ms *storage.MemStorage) int {
+	metricValue, err := strconv.ParseInt(metricValueStr, 10, 64)
 	if err == nil {
-		ms.UpdateCounterMetric(metricName,metricValue)
+		ms.UpdateCounterMetric(metricName, metricValue)
 		return http.StatusOK
 	} else {
 		return http.StatusBadRequest

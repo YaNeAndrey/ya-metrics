@@ -2,11 +2,14 @@ package router
 
 import (
 	"net/http"
+	"time"
 
-	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/handlers"
+	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/sirupsen/logrus"
 )
 
 func InitRouter(ms *storage.MemStorage) http.Handler {
@@ -15,22 +18,51 @@ func InitRouter(ms *storage.MemStorage) http.Handler {
 		rw.WriteHeader(http.StatusNotFound)
 	})
 
+	log := logrus.New()
+	log.SetLevel(logrus.InfoLevel)
+	r.Use(LoggerMiddleware(log))
+
 	r.Route("/", func(r chi.Router) {
-		r.Get("/", func(rw http.ResponseWriter, r *http.Request) {
-			handlers.HandleGetRoot(rw,r,ms)
+		r.Get("/", func(rw http.ResponseWriter, req *http.Request) {
+
+			handlers.HandleGetRoot(rw, req, ms)
 		})
-		
+
 		r.Route("/value", func(r chi.Router) {
-			r.Get("/{type}/{name}",func(rw http.ResponseWriter, r *http.Request) {
-				handlers.HandleGetMetricValue(rw,r,ms)
+			r.Get("/{type}/{name}", func(rw http.ResponseWriter, r *http.Request) {
+				handlers.HandleGetMetricValue(rw, r, ms)
 			})
 		})
 
 		r.Route("/update", func(r chi.Router) {
 			r.Post("/{type}/{name}/{value}", func(rw http.ResponseWriter, r *http.Request) {
-				handlers.HandlePostUpdateMetricValue(rw,r,ms)
+				handlers.HandlePostUpdateMetricValue(rw, r, ms)
 			})
 		})
-	}) 
+	})
 	return r
+}
+
+func LoggerMiddleware(logger logrus.FieldLogger) func(h http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+			timeStart := time.Now()
+			defer func() {
+				fields := logrus.Fields{
+					//request fields
+					"URI":      r.RequestURI,
+					"method":   r.Method,
+					"duration": time.Since(timeStart),
+
+					//response fields
+					"status_code":   ww.Status(),
+					"bytes_written": ww.BytesWritten(),
+				}
+				logger.WithFields(fields).Infoln("New request")
+			}()
+			h.ServeHTTP(ww, r)
+		}
+		return http.HandlerFunc(fn)
+	}
 }
