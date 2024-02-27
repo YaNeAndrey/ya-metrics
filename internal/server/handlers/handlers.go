@@ -65,7 +65,8 @@ func HandleGetMetricValue(w http.ResponseWriter, r *http.Request, st *storage.St
 
 	metricInStorage, err := (*st).GetMetricByNameAndType(metricName, metricType)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		//http.Error(w, err.Error(), http.StatusNotFound)
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
@@ -78,7 +79,9 @@ func HandleGetMetricValue(w http.ResponseWriter, r *http.Request, st *storage.St
 	w.Header().Set("Content-Type", "text/plain")
 	_, err = w.Write([]byte(body))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		//http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+
 		return
 	}
 
@@ -97,7 +100,7 @@ func HandlePostMetricValueJSON(w http.ResponseWriter, r *http.Request, st *stora
 	}
 	metricInStorage, err := (*st).GetMetricByNameAndType(newMetric.ID, newMetric.MType)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 	body, err := json.Marshal(metricInStorage)

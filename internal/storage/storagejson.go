@@ -29,14 +29,6 @@ func (ms *MemStorageJSON) GetAllMetrics() []Metrics {
 	return ms.allMetrics
 }
 
-func (ms *MemStorageJSON) GetAllGaugeMetrics() []Metrics {
-	return nil
-}
-
-func (ms *MemStorageJSON) GetAllCounterMetrics() []Metrics {
-	return nil
-}
-
 func (ms *MemStorageJSON) GetMetricByNameAndType(metricName string, metricType string) (Metrics, error) {
 	for _, metr := range ms.GetAllMetrics() {
 		if metr.MType == metricType && metr.ID == metricName {
