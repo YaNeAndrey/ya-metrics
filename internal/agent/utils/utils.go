@@ -2,7 +2,9 @@ package utils
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
+	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
@@ -43,11 +45,13 @@ func sendOneMetricUpdate(c *config.Config, metric storage.Metrics) error {
 	if err != nil {
 		return err
 	}
-	bodyReader := bytes.NewReader(jsonDate)
+	compressedDate, err := Compress(jsonDate)
+	bodyReader := bytes.NewReader(compressedDate)
 
 	client := &http.Client{}
 	r, _ := http.NewRequest("POST", urlStr, bodyReader)
 	r.Header.Add("Content-Type", "application/json")
+	r.Header.Add("Content-Encoding", "gzip")
 
 	resp, err := client.Do(r)
 
@@ -61,29 +65,40 @@ func sendOneMetricUpdate(c *config.Config, metric storage.Metrics) error {
 	return nil
 }
 
-/*
-func sendOneMetricUpdate(c *config.Config, metrType string, metrName string, metrValue string) error {
-	hostname := c.GetHostnameWithScheme()
-	urlStr, err := url.JoinPath(hostname, "update", metrType, metrName, metrValue)
+func Compress(data []byte) ([]byte, error) {
+	var b bytes.Buffer
+	w := gzip.NewWriter(&b)
+
+	// запись данных
+	_, err := w.Write(data)
 	if err != nil {
-		log.Println(err)
-		return err
+		return nil, fmt.Errorf("failed write data to compress temporary buffer: %v", err)
 	}
 
-	client := &http.Client{}
-	r, _ := http.NewRequest("POST", urlStr, nil)
-	r.Header.Add("Content-Type", "text/plain")
-
-	resp, err := client.Do(r)
-
+	err = w.Close()
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("failed compress data: %v", err)
 	}
-	resp.Body.Close()
-	return nil
+
+	return b.Bytes(), nil
 }
-*/
 
+/*
+	func Decompress(data []byte) ([]byte, error) {
+		// переменная r будет читать входящие данные и распаковывать их
+		r := flate.NewReader(bytes.NewReader(data))
+		defer r.Close()
+
+		var b bytes.Buffer
+		// в переменную b записываются распакованные данные
+		_, err := b.ReadFrom(r)
+		if err != nil {
+			return nil, fmt.Errorf("failed decompress data: %v", err)
+		}
+
+		return b.Bytes(), nil
+	}
+*/
 func StartMetricsMonitor(st *storage.StorageRepo, c *config.Config) {
 	iterCount := int(c.ReportInterval() / c.PollInterval())
 	for {

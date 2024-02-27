@@ -19,6 +19,7 @@ func InitRouter(st *storage.StorageRepo) http.Handler {
 	log := logrus.New()
 	log.SetLevel(logrus.InfoLevel)
 	r.Use(middleware.MyLoggerMiddleware(log))
+	r.Use(middleware.GzipMiddleware())
 
 	r.Route("/", func(r chi.Router) {
 		r.Get("/", func(rw http.ResponseWriter, req *http.Request) {
