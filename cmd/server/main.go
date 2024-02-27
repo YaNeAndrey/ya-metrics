@@ -10,8 +10,25 @@ import (
 
 func main() {
 	conf := parseFlags()
-	ms := storage.NewMemStorage()
-	r := router.InitRouter(ms)
+	//floatNum := 6.142434
+	//intNum := int64(123456)
+	testMetrics := []storage.Metrics{
+		/*{
+			ID:    "GaugeMetric",
+			MType: constants.GaugeMetricType,
+			Delta: nil,
+			Value: &floatNum,
+		},
+		{
+			ID:    "CounterMetric",
+			MType: constants.CounterMetricType,
+			Delta: &intNum,
+			Value: nil,
+		},*/
+	}
+	var st storage.StorageRepo
+	st = storage.NewMemStorageJSON(testMetrics)
+	r := router.InitRouter(&st)
 
 	err := http.ListenAndServe(fmt.Sprintf("%s:%d", conf.SrvAddr(), conf.SrvPort()), r)
 	if err != nil {

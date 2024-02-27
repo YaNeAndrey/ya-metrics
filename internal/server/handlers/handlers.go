@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -30,14 +31,15 @@ const tplStr = `<table>
     </tbody>
 </table>`
 
-func HandleGetRoot(w http.ResponseWriter, r *http.Request, ms *storage.MemStorage) {
+func HandleGetRoot(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
 	bufMetricMap := make(map[string]string)
 
-	for key, value := range ms.ListAllGaugeMetrics() {
-		bufMetricMap[key] = fmt.Sprintf("%v", value)
-	}
-	for key, value := range ms.ListAllCounterMetrics() {
-		bufMetricMap[key] = fmt.Sprintf("%v", value)
+	for _, metr := range (*st).GetAllMetrics() {
+		if metr.MType == constants.GaugeMetricType {
+			bufMetricMap[metr.ID] = fmt.Sprintf("%v", *metr.Value)
+		} else {
+			bufMetricMap[metr.ID] = fmt.Sprintf("%v", *metr.Delta)
+		}
 	}
 
 	tpl, err := template.New("table").Parse(tplStr)
@@ -55,29 +57,64 @@ func HandleGetRoot(w http.ResponseWriter, r *http.Request, ms *storage.MemStorag
 	w.Header().Set("Content-Type", "text/html")
 }
 
-func HandleGetMetricValue(w http.ResponseWriter, r *http.Request, ms *storage.MemStorage) {
+func HandleGetMetricValue(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
 	metricType := strings.ToLower(chi.URLParam(r, "type"))
 	metricName := chi.URLParam(r, "name")
 
 	body := ""
-	statusCode := http.StatusBadRequest
 
-	switch metricType {
-	case constants.GaugeMetricType:
-		body, statusCode = getGaugeMetricValue(metricName, ms)
-	case constants.CounterMetricType:
-		body, statusCode = getCounterMetricValue(metricName, ms)
-	default:
-		body, statusCode = "", http.StatusNotFound
+	metricInStorage, err := (*st).GetMetricByNameAndType(metricName, metricType)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	if metricInStorage.MType == constants.GaugeMetricType {
+		body = fmt.Sprintf("%v", *metricInStorage.Value)
+	} else {
+		body = fmt.Sprintf("%v", *metricInStorage.Delta)
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(statusCode)
-	w.Write([]byte(body))
+	_, err = w.Write([]byte(body))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 }
 
-func HandlePostUpdateMetricValue(w http.ResponseWriter, r *http.Request, ms *storage.MemStorage) {
+func HandlePostMetricValueJSON(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "Incorrect Content-Type. application/json required", http.StatusBadRequest)
+	}
+
+	var newMetric storage.Metrics
+	err := json.NewDecoder(r.Body).Decode(&newMetric)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	metricInStorage, err := (*st).GetMetricByNameAndType(newMetric.ID, newMetric.MType)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	body, err := json.Marshal(metricInStorage)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func HandlePostUpdateMetricValue(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
 	metricType := strings.ToLower(chi.URLParam(r, "type"))
 	metricName := chi.URLParam(r, "name")
 	metricValueStr := chi.URLParam(r, "value")
@@ -86,60 +123,71 @@ func HandlePostUpdateMetricValue(w http.ResponseWriter, r *http.Request, ms *sto
 		return
 	}
 
-	statusCode := updateMetric(metricType, metricName, metricValueStr, ms)
+	statusCode := updateMetric(metricType, metricName, metricValueStr, st)
 	w.WriteHeader(statusCode)
 }
 
-func getGaugeMetricValue(metricName string, ms *storage.MemStorage) (string, int) {
-	allGaugeMetrics := ms.ListAllGaugeMetrics()
+func HandlePostUpdateMetricValueJSON(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "Incorrect Content-Type. application/json required", http.StatusBadRequest)
+	}
 
-	value, isExist := allGaugeMetrics[metricName]
-	if isExist {
-		valueStr := strconv.FormatFloat(value, 'f', -1, 64)
-		return valueStr, http.StatusOK
-	} else {
-		return "", http.StatusNotFound
+	var newMetric storage.Metrics
+	err := json.NewDecoder(r.Body).Decode(&newMetric)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = (*st).UpdateMetric(newMetric, false)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	body, err := json.Marshal(newMetric)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
 
-func getCounterMetricValue(metricName string, ms *storage.MemStorage) (string, int) {
-	allCounterMetrics := ms.ListAllCounterMetrics()
-	value, isExist := allCounterMetrics[metricName]
-	if isExist {
-		valueStr := strconv.FormatInt(value, 10)
-		return valueStr, http.StatusOK
-	} else {
-		return "", http.StatusNotFound
+func updateMetric(metricType string, metricName string, metricValueStr string, st *storage.StorageRepo) int {
+	newMetric := storage.Metrics{
+		ID:    metricName,
+		MType: metricType,
+		Delta: nil,
+		Value: nil,
 	}
-}
 
-func updateMetric(metricType string, metricName string, metricValueStr string, ms *storage.MemStorage) int {
 	switch metricType {
 	case constants.GaugeMetricType:
-		return checkDataAndUpdateGauge(metricName, metricValueStr, ms)
+		{
+			metricValue, err := strconv.ParseFloat(metricValueStr, 64)
+			if err != nil {
+				return http.StatusBadRequest
+			}
+			newMetric.Value = &metricValue
+		}
 	case constants.CounterMetricType:
-		return checkDataAndUpdateCounter(metricName, metricValueStr, ms)
+		{
+			metricValue, err := strconv.ParseInt(metricValueStr, 10, 64)
+			if err != nil {
+				return http.StatusBadRequest
+			}
+			newMetric.Delta = &metricValue
+		}
 	default:
 		return http.StatusBadRequest
 	}
-}
-
-func checkDataAndUpdateGauge(metricName string, metricValueStr string, ms *storage.MemStorage) int {
-	metricValue, err := strconv.ParseFloat(metricValueStr, 64)
-	if err == nil {
-		ms.UpdateGaugeMetric(metricName, metricValue)
-		return http.StatusOK
-	} else {
-		return http.StatusBadRequest
+	err := (*st).UpdateMetric(newMetric, false)
+	if err != nil {
+		return http.StatusInternalServerError
 	}
-}
-
-func checkDataAndUpdateCounter(metricName string, metricValueStr string, ms *storage.MemStorage) int {
-	metricValue, err := strconv.ParseInt(metricValueStr, 10, 64)
-	if err == nil {
-		ms.UpdateCounterMetric(metricName, metricValue)
-		return http.StatusOK
-	} else {
-		return http.StatusBadRequest
-	}
+	return http.StatusOK
 }

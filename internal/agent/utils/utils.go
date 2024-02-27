@@ -1,52 +1,80 @@
 package utils
 
 import (
-	"runtime"
-	"fmt"
-	"net/http"
+	"bytes"
+	"encoding/json"
 	"log"
-	"time"
 	"math/rand"
+	"net/http"
 	"net/url"
-	
-	"github.com/YaNeAndrey/ya-metrics/internal/constants"
+	"runtime"
+	"time"
+
 	"github.com/YaNeAndrey/ya-metrics/internal/agent/config"
+	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 )
 
-func sendAllMetricsUpdates(ms *storage.MemStorage, c *config.Config){
-	for metrName, metrValue := range ms.ListAllGaugeMetrics() {
-		//send post for gauge metrics
-		err := sendOneMetricUpdate(c,constants.GaugeMetricType, metrName,fmt.Sprint(metrValue))
+func sendAllMetricsUpdates(st *storage.StorageRepo, c *config.Config) {
+	for _, metr := range (*st).GetAllMetrics() {
+		err := sendOneMetricUpdate(c, metr)
 		if err != nil {
-			//log.Fatal(err)
 			log.Println(err)
 		}
 	}
-	for metrName, metrValue := range ms.ListAllCounterMetrics() {
-		//send post for counter metrics
-		err := sendOneMetricUpdate(c,constants.CounterMetricType, metrName,fmt.Sprint(metrValue))
-		if err != nil {
-			//log.Fatal(err)
-			log.Println(err)
-		}
+	defaultPollInterval := int64(0)
+	err := (*st).UpdateMetric(storage.Metrics{ID: "PollCount", MType: constants.CounterMetricType, Delta: &defaultPollInterval}, true)
+	if err != nil {
+		log.Println(err)
+		return
 	}
-	ms.SetCounterMetric("PollCount",0)
 }
 
-func sendOneMetricUpdate(c *config.Config, metrType string, metrName string, metrValue string) error{
+func sendOneMetricUpdate(c *config.Config, metric storage.Metrics) error {
+	serverAddr := c.GetHostnameWithScheme()
+
+	urlStr, err := url.JoinPath(serverAddr, "update")
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	jsonDate, err := json.Marshal(metric)
+	if err != nil {
+		return err
+	}
+	bodyReader := bytes.NewReader(jsonDate)
+
+	client := &http.Client{}
+	r, _ := http.NewRequest("POST", urlStr, bodyReader)
+	r.Header.Add("Content-Type", "application/json")
+
+	resp, err := client.Do(r)
+
+	if err != nil {
+		return err
+	}
+	err = resp.Body.Close()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+/*
+func sendOneMetricUpdate(c *config.Config, metrType string, metrName string, metrValue string) error {
 	hostname := c.GetHostnameWithScheme()
-	urlStr, err := url.JoinPath(hostname,"update",metrType,metrName,metrValue)
+	urlStr, err := url.JoinPath(hostname, "update", metrType, metrName, metrValue)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
 	client := &http.Client{}
-    r, _ := http.NewRequest("POST", urlStr, nil)
-    r.Header.Add("Content-Type", "text/plain")
+	r, _ := http.NewRequest("POST", urlStr, nil)
+	r.Header.Add("Content-Type", "text/plain")
 
-    resp, err := client.Do(r)
+	resp, err := client.Do(r)
 
 	if err != nil {
 		return err
@@ -54,52 +82,71 @@ func sendOneMetricUpdate(c *config.Config, metrType string, metrName string, met
 	resp.Body.Close()
 	return nil
 }
+*/
 
-func StartMetricsMonitor(ms *storage.MemStorage, c *config.Config){
-	iterCount := int(c.ReportInterval()/c.PollInterval())
-	for{
+func StartMetricsMonitor(st *storage.StorageRepo, c *config.Config) {
+	iterCount := int(c.ReportInterval() / c.PollInterval())
+	for {
 		for i := 0; i < iterCount; i++ {
-			collectNewMetrics(ms)
+			collectNewMetrics(st)
 			time.Sleep(c.PollInterval())
 		}
-		sendAllMetricsUpdates(ms,c)
+		sendAllMetricsUpdates(st, c)
 	}
 }
 
-func collectNewMetrics(ms *storage.MemStorage)  {
+func collectNewMetrics(st *storage.StorageRepo) {
 	var rtm runtime.MemStats
 	runtime.ReadMemStats(&rtm)
 
-	ms.UpdateGaugeMetric("Alloc",float64(rtm.Alloc))
-	ms.UpdateGaugeMetric("BuckHashSys",float64(rtm.BuckHashSys))
-	ms.UpdateGaugeMetric("Frees",float64(rtm.Frees))
-	ms.UpdateGaugeMetric("GCCPUFraction",float64(rtm.GCCPUFraction))
-	ms.UpdateGaugeMetric("GCSys",float64(rtm.GCSys))
-	ms.UpdateGaugeMetric("HeapAlloc",float64(rtm.HeapAlloc))
-	ms.UpdateGaugeMetric("HeapIdle",float64(rtm.HeapIdle))
-	ms.UpdateGaugeMetric("HeapInuse",float64(rtm.HeapInuse))
-	ms.UpdateGaugeMetric("HeapObjects",float64(rtm.HeapObjects))
-	ms.UpdateGaugeMetric("HeapReleased",float64(rtm.HeapReleased))
-	ms.UpdateGaugeMetric("HeapSys",float64(rtm.HeapSys))
-	ms.UpdateGaugeMetric("LastGC",float64(rtm.LastGC))
-	ms.UpdateGaugeMetric("Lookups",float64(rtm.Lookups))
-	ms.UpdateGaugeMetric("MCacheInuse",float64(rtm.MCacheInuse))
-	ms.UpdateGaugeMetric("MCacheSys",float64(rtm.MCacheSys))
-	ms.UpdateGaugeMetric("MSpanInuse",float64(rtm.MSpanInuse))
-	ms.UpdateGaugeMetric("MSpanSys",float64(rtm.MSpanSys))
-	ms.UpdateGaugeMetric("Mallocs",float64(rtm.Mallocs))
-	ms.UpdateGaugeMetric("NextGC",float64(rtm.NextGC))
-	ms.UpdateGaugeMetric("NumForcedGC",float64(rtm.NumForcedGC))
-	ms.UpdateGaugeMetric("NumGC",float64(rtm.NumGC))
-	ms.UpdateGaugeMetric("OtherSys",float64(rtm.OtherSys))
-	ms.UpdateGaugeMetric("PauseTotalNs",float64(rtm.PauseTotalNs))
-	ms.UpdateGaugeMetric("StackInuse",float64(rtm.StackInuse))
-	ms.UpdateGaugeMetric("StackSys",float64(rtm.StackSys))
-	ms.UpdateGaugeMetric("Sys",float64(rtm.Sys))
-	ms.UpdateGaugeMetric("TotalAlloc",float64(rtm.TotalAlloc))
+	gaugeMetrics := map[string]float64{
+		"Alloc":         float64(rtm.Alloc),
+		"BuckHashSys":   float64(rtm.BuckHashSys),
+		"Frees":         float64(rtm.Frees),
+		"GCCPUFraction": float64(rtm.GCCPUFraction),
+		"GCSys":         float64(rtm.GCSys),
+		"HeapAlloc":     float64(rtm.HeapAlloc),
+		"HeapIdle":      float64(rtm.HeapIdle),
+		"HeapInuse":     float64(rtm.HeapInuse),
+		"HeapObjects":   float64(rtm.HeapObjects),
+		"HeapReleased":  float64(rtm.HeapReleased),
+		"HeapSys":       float64(rtm.HeapSys),
+		"LastGC":        float64(rtm.LastGC),
+		"Lookups":       float64(rtm.Lookups),
+		"MCacheInuse":   float64(rtm.MCacheInuse),
+		"MCacheSys":     float64(rtm.MCacheSys),
+		"MSpanInuse":    float64(rtm.MSpanInuse),
+		"MSpanSys":      float64(rtm.MSpanSys),
+		"Mallocs":       float64(rtm.Mallocs),
+		"NextGC":        float64(rtm.NextGC),
+		"NumForcedGC":   float64(rtm.NumForcedGC),
+		"NumGC":         float64(rtm.NumGC),
+		"OtherSys":      float64(rtm.OtherSys),
+		"PauseTotalNs":  float64(rtm.PauseTotalNs),
+		"StackInuse":    float64(rtm.StackInuse),
+		"StackSys":      float64(rtm.StackSys),
+		"Sys":           float64(rtm.Sys),
+		"TotalAlloc":    float64(rtm.TotalAlloc),
+		"RandomValue":   rand.Float64(),
+	}
 
-	ms.UpdateCounterMetric("PollCount",1)
-	
-	ms.UpdateGaugeMetric("RandomValue",rand.Float64())
-
+	for metricName, metricValue := range gaugeMetrics {
+		newMetric := storage.Metrics{
+			ID:    metricName,
+			MType: constants.GaugeMetricType,
+			Value: &metricValue,
+		}
+		//log.Println(newMetric)
+		err := (*st).UpdateMetric(newMetric, false)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}
+	pollInterval := int64(1)
+	err := (*st).UpdateMetric(storage.Metrics{ID: "PollCount", MType: constants.CounterMetricType, Delta: &pollInterval}, false)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 }
