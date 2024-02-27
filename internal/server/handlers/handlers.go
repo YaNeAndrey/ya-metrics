@@ -168,27 +168,30 @@ func updateMetric(metricType string, metricName string, metricValueStr string, s
 		Value: nil,
 	}
 
+	var floatValue float64
+	var intValue int64
+	var err error
 	switch metricType {
 	case constants.GaugeMetricType:
 		{
-			metricValue, err := strconv.ParseFloat(metricValueStr, 64)
+			floatValue, err = strconv.ParseFloat(metricValueStr, 64)
 			if err != nil {
 				return http.StatusBadRequest
 			}
-			newMetric.Value = &metricValue
+			newMetric.Value = &floatValue
 		}
 	case constants.CounterMetricType:
 		{
-			metricValue, err := strconv.ParseInt(metricValueStr, 10, 64)
+			intValue, err = strconv.ParseInt(metricValueStr, 10, 64)
 			if err != nil {
 				return http.StatusBadRequest
 			}
-			newMetric.Delta = &metricValue
+			newMetric.Delta = &intValue
 		}
 	default:
 		return http.StatusBadRequest
 	}
-	err := (*st).UpdateMetric(newMetric, false)
+	err = (*st).UpdateMetric(newMetric, false)
 	if err != nil {
 		return http.StatusInternalServerError
 	}

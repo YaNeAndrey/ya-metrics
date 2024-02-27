@@ -20,8 +20,7 @@ import (
 // +++
 func Test_collectNewMetrics(t *testing.T) {
 
-	var testStorage storage.StorageRepo
-	testStorage = storage.NewMemStorageJSON([]storage.Metrics{})
+	testStorage := storage.StorageRepo(storage.NewMemStorageJSON([]storage.Metrics{}))
 
 	type args struct {
 		st *storage.StorageRepo
@@ -65,13 +64,10 @@ func Test_sendAllMetricsUpdates(t *testing.T) {
 
 // +++
 func Test_sendOneMetricUpdate(t *testing.T) {
-	var floatValue float64
-	floatValue = 124.2345
-	var intValue int64
-	intValue = 124
+	floatValue := float64(124.2345)
+	intValue := int64(124)
 
-	var testStorage storage.StorageRepo
-	testStorage = storage.NewMemStorageJSON([]storage.Metrics{})
+	testStorage := storage.StorageRepo(storage.NewMemStorageJSON([]storage.Metrics{}))
 
 	type args struct {
 		c      *config.Config

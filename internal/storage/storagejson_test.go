@@ -7,10 +7,8 @@ import (
 )
 
 func TestMemStorageJSON_GetAllMetrics(t *testing.T) {
-	var floatValue float64
-	floatValue = 124.2345
-	var intValue int64
-	intValue = 124
+	floatValue := float64(124.2345)
+	intValue := int64(124)
 
 	type fields struct {
 		allMetrics []Metrics
@@ -125,10 +123,8 @@ func TestMemStorageJSON_UpdateMetric(t *testing.T) {
 }
 
 func TestMetrics_CheckMetric(t *testing.T) {
-	var floatValue float64
-	floatValue = 124.2345
-	var intValue int64
-	intValue = 124
+	floatValue := float64(124.2345)
+	intValue := int64(124)
 	type fields struct {
 		ID    string
 		MType string
@@ -206,14 +202,10 @@ func TestMetrics_Clone(t *testing.T) {
 
 // ++++
 func TestMetrics_UpdateMetric(t *testing.T) {
-	var oldFloatValue float64
-	oldFloatValue = 124.2345
-	var newFloatValue float64
-	newFloatValue = 555.1223
-	var oldIntValue int64
-	oldIntValue = 124
-	var newIntValue int64
-	newIntValue = 124 + 124
+	oldFloatValue := float64(124.2345)
+	newFloatValue := float64(555.1223)
+	oldIntValue := int64(124)
+	newIntValue := int64(124 + 124)
 	type fields struct {
 		ID    string
 		MType string

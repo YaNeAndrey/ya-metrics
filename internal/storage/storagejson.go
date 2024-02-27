@@ -35,5 +35,5 @@ func (ms *MemStorageJSON) GetMetricByNameAndType(metricName string, metricType s
 			return metr, nil
 		}
 	}
-	return Metrics{}, errors.New("Metric not found")
+	return Metrics{}, errors.New("metric not found")
 }

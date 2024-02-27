@@ -26,8 +26,7 @@ func main() {
 			Value: nil,
 		},*/
 	}
-	var st storage.StorageRepo
-	st = storage.NewMemStorageJSON(testMetrics)
+	st := storage.StorageRepo(storage.NewMemStorageJSON(testMetrics))
 	r := router.InitRouter(&st)
 
 	err := http.ListenAndServe(fmt.Sprintf("%s:%d", conf.SrvAddr(), conf.SrvPort()), r)

@@ -9,8 +9,8 @@ import (
 func main() {
 	testMetrics := []storage.Metrics{}
 
-	var st storage.StorageRepo
-	st = storage.NewMemStorageJSON(testMetrics)
+	st := storage.StorageRepo(storage.NewMemStorageJSON(testMetrics))
+
 	cnfg := parseFlags()
 	log.Println(cnfg.Scheme())
 	log.Println(cnfg.SrvAddr())

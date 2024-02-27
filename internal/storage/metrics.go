@@ -17,23 +17,23 @@ func (m *Metrics) CheckMetric() error {
 	case constants.GaugeMetricType:
 		{
 			if m.Value == nil {
-				return errors.New("No value specified for gauge metric")
+				return errors.New("no value specified for gauge metric")
 			}
 			if m.Delta != nil {
-				return errors.New("Delta must be nil for counter metric")
+				return errors.New("delta must be nil for counter metric")
 			}
 		}
 	case constants.CounterMetricType:
 		{
 			if m.Delta == nil {
-				return errors.New("No delta specified for counter metric")
+				return errors.New("no delta specified for counter metric")
 			}
 			if m.Value != nil {
-				return errors.New("Value must be nil for counter metric")
+				return errors.New("value must be nil for counter metric")
 			}
 		}
 	default:
-		return errors.New("Incorrect metric type")
+		return errors.New("incorrect metric type")
 	}
 	return nil
 }
@@ -44,7 +44,7 @@ func (m *Metrics) UpdateMetric(newMetric Metrics, setCounterDelta bool) error {
 		return err
 	}
 	if m.MType != newMetric.MType {
-		return errors.New("Metric types do not match")
+		return errors.New("metric types do not match")
 	}
 
 	switch newMetric.MType {
@@ -52,7 +52,7 @@ func (m *Metrics) UpdateMetric(newMetric Metrics, setCounterDelta bool) error {
 		{
 			d := *(newMetric.Delta)
 			if setCounterDelta {
-				m.Delta = &d
+				*m.Delta = d
 			} else {
 				oldDelta := *m.Delta
 				newDelta := d + oldDelta
@@ -62,7 +62,7 @@ func (m *Metrics) UpdateMetric(newMetric Metrics, setCounterDelta bool) error {
 	case constants.GaugeMetricType:
 		{
 			v := *(newMetric.Value)
-			m.Value = &v
+			*m.Value = v
 		}
 	}
 	return nil
