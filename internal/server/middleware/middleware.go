@@ -3,7 +3,6 @@ package middleware
 import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sirupsen/logrus"
-	"log"
 	"net/http"
 	"slices"
 	"strings"
@@ -40,10 +39,13 @@ func GzipMiddleware() func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			ow := w
 
-			allAcceptEncodingHeaders := strings.Split(r.Header.Values("Accept-Encoding")[0], ", ")
-			log.Println(allAcceptEncodingHeaders)
-			if slices.Contains(allAcceptEncodingHeaders, "gzip") {
-				log.Println("gzip - ok")
+			//allAcceptEncodingHeaders := strings.Split(r.Header.Values("Accept-Encoding")[0], ", ")
+			var allAcceptEncodingSlice []string
+			allAcceptEncodingHeaders := r.Header.Values("Accept-Encoding")
+			if len(allAcceptEncodingHeaders) > 0 {
+				allAcceptEncodingSlice = strings.Split(allAcceptEncodingHeaders[0], ", ")
+			}
+			if slices.Contains(allAcceptEncodingSlice, "gzip") {
 				cw := gzip.NewCompressWriter(w)
 				ow = cw
 				defer cw.Close()
