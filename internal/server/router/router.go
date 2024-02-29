@@ -1,6 +1,7 @@
 package router
 
 import (
+	"github.com/YaNeAndrey/ya-metrics/internal/server/config"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/handlers"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/middleware"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
@@ -10,7 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func InitRouter(st *storage.StorageRepo) http.Handler {
+func InitRouter(c config.Config, st *storage.StorageRepo) http.Handler {
 	r := chi.NewRouter()
 	r.NotFound(func(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(http.StatusNotFound)
@@ -37,10 +38,13 @@ func InitRouter(st *storage.StorageRepo) http.Handler {
 		})
 
 		r.Route("/update", func(r chi.Router) {
+			if c.StoreInterval() == 0 {
+				r.Use(middleware.SyncUpdateAndFileStorageMiddleware(c, st))
+			}
+
 			r.Post("/", func(rw http.ResponseWriter, r *http.Request) {
 				handlers.HandlePostUpdateMetricValueJSON(rw, r, st)
 			})
-
 			r.Post("/{type}/{name}/{value}", func(rw http.ResponseWriter, r *http.Request) {
 				handlers.HandlePostUpdateMetricValue(rw, r, st)
 			})

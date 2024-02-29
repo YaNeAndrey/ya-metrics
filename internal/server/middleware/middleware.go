@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"github.com/YaNeAndrey/ya-metrics/internal/server/utils"
+	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sirupsen/logrus"
 	"net/http"
@@ -8,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/YaNeAndrey/ya-metrics/internal/server/config"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/gzip"
 )
 
@@ -34,6 +37,7 @@ func MyLoggerMiddleware(logger logrus.FieldLogger) func(h http.Handler) http.Han
 		return http.HandlerFunc(fn)
 	}
 }
+
 func GzipMiddleware() func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
@@ -62,6 +66,20 @@ func GzipMiddleware() func(h http.Handler) http.Handler {
 				defer cr.Close()
 			}
 			h.ServeHTTP(ow, r)
+		}
+		return http.HandlerFunc(fn)
+	}
+}
+
+func SyncUpdateAndFileStorageMiddleware(c config.Config, st *storage.StorageRepo) func(h http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			h.ServeHTTP(w, r)
+
+			err := utils.SaveAllMetricsToFile(c, st)
+			if err != nil {
+				return
+			}
 		}
 		return http.HandlerFunc(fn)
 	}
