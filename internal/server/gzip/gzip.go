@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"io"
 	"net/http"
+	"slices"
 )
 
 type CompressWriter struct {
@@ -24,12 +25,12 @@ func (c *CompressWriter) Header() http.Header {
 
 func (c *CompressWriter) Write(p []byte) (int, error) {
 	//c.body.Write(p)
-	//contentEncodings := c.w.Header().Values("Content-Encoding")
-	//if slices.Contains(contentEncodings, "application/json") || slices.Contains(contentEncodings, "text/html") {
-	return c.zw.Write(p)
-	//} else {
-	//return c.Write(p)
-	//}
+	contentTypes := c.w.Header().Values("Content-Type")
+	if slices.Contains(contentTypes, "application/json") || slices.Contains(contentTypes, "text/html") {
+		return c.zw.Write(p)
+	} else {
+		return c.w.Write(p)
+	}
 	//return c.zw.Write(p)
 }
 
@@ -45,9 +46,11 @@ func (c *CompressWriter) Write(p []byte) (int, error) {
 	}
 */
 func (c *CompressWriter) WriteHeader(statusCode int) {
-	if statusCode < 300 {
+	contentType := c.w.Header().Get("Content-Type")
+	if statusCode < 300 && (contentType == "application/json" || contentType == "text/html") {
 		c.w.Header().Set("Content-Encoding", "gzip")
 	}
+	//c.w.Header().Set("Content-Length", strconv.Itoa(7))
 	c.w.WriteHeader(statusCode)
 }
 

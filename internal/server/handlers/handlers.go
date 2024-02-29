@@ -78,16 +78,16 @@ func HandleGetMetricValue(w http.ResponseWriter, r *http.Request, st *storage.St
 	} else {
 		body = fmt.Sprintf("%v", *metricInStorage.Delta)
 	}
-
-	w.Header().Set("Content-Type", "text/plain")
 	_, err = w.Write([]byte(body))
+
 	if err != nil {
 		//http.Error(w, err.Error(), http.StatusInternalServerError)
 		w.WriteHeader(http.StatusInternalServerError)
-
 		return
 	}
-
+	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+	w.WriteHeader(http.StatusOK)
 }
 
 func HandlePostMetricValueJSON(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
