@@ -17,20 +17,7 @@ func main() {
 	conf := parseFlags()
 	//floatNum := 6.142434
 	//intNum := int64(123456)
-	testMetrics := []storage.Metrics{
-		/*{
-			ID:    "GaugeMetric",
-			MType: constants.GaugeMetricType,
-			Delta: nil,
-			Value: &floatNum,
-		},
-		{
-			ID:    "CounterMetric",
-			MType: constants.CounterMetricType,
-			Delta: &intNum,
-			Value: nil,
-		},*/
-	}
+	testMetrics := []storage.Metrics{}
 
 	log.Println(*conf)
 	st := storage.StorageRepo(storage.NewMemStorageJSON(testMetrics))
@@ -42,7 +29,7 @@ func main() {
 	r := router.InitRouter(*conf, &st)
 
 	//Send Ctrl+C for good exit
-	c := make(chan os.Signal)
+	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
