@@ -40,22 +40,22 @@ func GzipMiddleware() func(h http.Handler) http.Handler {
 			// который будем передавать следующей функции
 			ow := w
 
-			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+			//ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
 			// проверяем, что клиент умеет получать от сервера сжатые данные в формате gzip
 			allAcceptEncodingHeaders := r.Header.Values("Accept-Encoding")
 			if slices.Contains(allAcceptEncodingHeaders, "gzip") {
 				//if content type json or html
-				responseContentType := ww.Header().Values("Content-Type")
-				if slices.Contains(responseContentType, "application/json") || slices.Contains(responseContentType, "text/html") {
-					// оборачиваем оригинальный http.ResponseWriter новым с поддержкой сжатия
-					cw := gzip.NewCompressWriter(w)
-					cw.Header().Set("Content-Encoding", "gzip")
-					// меняем оригинальный http.ResponseWriter на новый
-					ow = cw
-					// не забываем отправить клиенту все сжатые данные после завершения middleware
-					defer cw.Close()
-				}
+				//responseContentType := ww.Header().Values("Content-Type")
+				//if slices.Contains(responseContentType, "application/json") || slices.Contains(responseContentType, "text/html") {
+				// оборачиваем оригинальный http.ResponseWriter новым с поддержкой сжатия
+				cw := gzip.NewCompressWriter(w)
+				cw.Header().Set("Content-Encoding", "gzip")
+				// меняем оригинальный http.ResponseWriter на новый
+				ow = cw
+				// не забываем отправить клиенту все сжатые данные после завершения middleware
+				defer cw.Close()
+				//}
 			}
 
 			// проверяем, что клиент отправил серверу сжатые данные в формате gzip

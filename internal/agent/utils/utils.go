@@ -47,6 +47,10 @@ func sendOneMetricUpdate(c *config.Config, metric storage.Metrics) error {
 		return err
 	}
 	compressedDate, err := Compress(jsonDate)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
 
 	bodyReader := bytes.NewReader(compressedDate)
 
