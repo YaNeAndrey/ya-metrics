@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"log"
 	"os"
 	"path"
 	"strings"
@@ -21,7 +22,7 @@ func NewConfig() *Config {
 	c.srvAddr = "localhost"
 	c.srvPort = 8080
 	c.storeInterval = time.Duration(300) * time.Second
-	c.fileStoragePath = path.Join(".", "tmp", "metrics-db.json")
+	c.fileStoragePath = path.Join("tmp", "metrics-db.json")
 	c.restoreMetrics = true
 	return &c
 }
@@ -41,6 +42,7 @@ func (c *Config) SetSrvPort(srvPort int) error {
 func (c *Config) SetStoreInterval(storeInterval int) error {
 	if storeInterval > -1 {
 		c.storeInterval = time.Duration(storeInterval) * time.Second
+		return nil
 	}
 	return errors.New("StoreInterval must be greater then -1")
 }
@@ -50,8 +52,9 @@ func (c *Config) SetFileStoragePath(fileStoragePath string) error {
 	if err != nil {
 		if os.IsNotExist(err) {
 			separatedPath := strings.Split(fileStoragePath, string(os.PathSeparator))
+			log.Println(separatedPath)
 			dirPath := strings.Join(separatedPath[0:len(separatedPath)-1], string(os.PathSeparator))
-			err = os.MkdirAll(dirPath, 0777)
+			err = os.MkdirAll(dirPath, 0666)
 			if err != nil {
 				return err
 			}
