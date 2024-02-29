@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -55,9 +54,8 @@ func HandleGetRoot(w http.ResponseWriter, r *http.Request, st *storage.StorageRe
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	log.Println("set 200 status code")
+
 	w.WriteHeader(http.StatusOK)
-	log.Println(w.Header())
 }
 
 func HandleGetMetricValue(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
