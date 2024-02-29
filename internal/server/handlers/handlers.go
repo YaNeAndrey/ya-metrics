@@ -32,6 +32,8 @@ const tplStr = `<table>
 </table>`
 
 func HandleGetRoot(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
+	defer r.Body.Close()
+
 	bufMetricMap := make(map[string]string)
 	w.Header().Set("Content-Type", "text/html")
 	//w.Header().Set("Content-Encoding", "gzip")
@@ -59,6 +61,9 @@ func HandleGetRoot(w http.ResponseWriter, r *http.Request, st *storage.StorageRe
 }
 
 func HandleGetMetricValue(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
+
+	defer r.Body.Close()
+
 	metricType := strings.ToLower(chi.URLParam(r, "type"))
 	metricName := chi.URLParam(r, "name")
 
@@ -88,6 +93,8 @@ func HandleGetMetricValue(w http.ResponseWriter, r *http.Request, st *storage.St
 }
 
 func HandlePostMetricValueJSON(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
+	defer r.Body.Close()
+
 	if r.Header.Get("Content-Type") != "application/json" {
 		http.Error(w, "Incorrect Content-Type. application/json required", http.StatusBadRequest)
 	}
@@ -118,6 +125,8 @@ func HandlePostMetricValueJSON(w http.ResponseWriter, r *http.Request, st *stora
 }
 
 func HandlePostUpdateMetricValue(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
+	defer r.Body.Close()
+
 	metricType := strings.ToLower(chi.URLParam(r, "type"))
 	metricName := chi.URLParam(r, "name")
 	metricValueStr := chi.URLParam(r, "value")
@@ -131,6 +140,8 @@ func HandlePostUpdateMetricValue(w http.ResponseWriter, r *http.Request, st *sto
 }
 
 func HandlePostUpdateMetricValueJSON(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
+	defer r.Body.Close()
+
 	if r.Header.Get("Content-Type") != "application/json" {
 		http.Error(w, "Incorrect Content-Type. application/json required", http.StatusBadRequest)
 	}

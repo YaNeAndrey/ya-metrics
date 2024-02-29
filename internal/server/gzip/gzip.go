@@ -29,6 +29,9 @@ func (c *CompressWriter) Write(p []byte) (int, error) {
 		c.w.Header().Set("Content-Encoding", "gzip")
 		c.zw = gzip.NewWriter(c.w)
 		lenBuf, err := c.zw.Write(p)
+		if err != nil {
+			return 0, err
+		}
 		err = c.Close()
 		if err != nil {
 			return 0, err
