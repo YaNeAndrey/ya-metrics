@@ -21,7 +21,7 @@ func main() {
 	err := utils.ReadMetricsFromFile(*conf, &st)
 
 	if err != nil {
-		log.Println(err)
+		log.Println("From main: " + err.Error())
 	}
 	r := router.InitRouter(*conf, &st)
 
@@ -40,7 +40,7 @@ func main() {
 	err = utils.CheckAndCreateFile(conf.FileStoragePath())
 
 	if err != nil {
-		log.Println(err)
+		log.Println("From main: " + err.Error())
 	}
 
 	go utils.SaveMetricsByTime(*conf, &st)

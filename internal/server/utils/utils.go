@@ -32,6 +32,10 @@ func SaveAllMetricsToFile(c config.Config, st *storage.StorageRepo) error {
 
 func ReadMetricsFromFile(c config.Config, st *storage.StorageRepo) error {
 	if c.RestoreMetrics() {
+		err := CheckAndCreateFile(c.FileStoragePath())
+		if err != nil {
+			return err
+		}
 		data, err := os.ReadFile(c.FileStoragePath())
 		if err != nil {
 			return err
