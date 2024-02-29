@@ -1,8 +1,10 @@
 package config
 
 import (
+	"path"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -15,8 +17,11 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "First test. Create server config",
 			want: &Config{
-				srvAddr: "localhost",
-				srvPort: 8080,
+				srvAddr:         "localhost",
+				srvPort:         8080,
+				storeInterval:   time.Duration(300) * time.Second,
+				fileStoragePath: path.Join(".", "tmp", "metrics-db.json"),
+				restoreMetrics:  true,
 			},
 		},
 	}
@@ -37,7 +42,7 @@ func TestConfig_SrvAddr(t *testing.T) {
 	}{
 		{
 			name: "First test. Get server hostname",
-			c: NewConfig(),
+			c:    NewConfig(),
 			want: "localhost",
 		},
 	}
@@ -58,7 +63,7 @@ func TestConfig_SrvPort(t *testing.T) {
 	}{
 		{
 			name: "First test. Get server port",
-			c: NewConfig(),
+			c:    NewConfig(),
 			want: 8080,
 		},
 	}
@@ -82,7 +87,7 @@ func TestConfig_SetSrvAddr(t *testing.T) {
 	}{
 		{
 			name: "First test. Set server hostname",
-			c: NewConfig(),
+			c:    NewConfig(),
 			args: args{
 				srvAddr: "1.1.1.1",
 			},
@@ -91,7 +96,7 @@ func TestConfig_SetSrvAddr(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.c.SetSrvAddr(tt.args.srvAddr)
-			assert.Equal(t,tt.args.srvAddr,tt.c.srvAddr)
+			assert.Equal(t, tt.args.srvAddr, tt.c.srvAddr)
 		})
 	}
 }
@@ -101,15 +106,15 @@ func TestConfig_SetSrvPort(t *testing.T) {
 		srvPort int
 	}
 	tests := []struct {
-		name    string
-		c       *Config
-		args    args
-		wantErr bool
+		name             string
+		c                *Config
+		args             args
+		wantErr          bool
 		expectedErrorMsg string
 	}{
 		{
 			name: "First test. Set server port",
-			c: NewConfig(),
+			c:    NewConfig(),
 			args: args{
 				srvPort: 80,
 			},
@@ -117,11 +122,11 @@ func TestConfig_SetSrvPort(t *testing.T) {
 		},
 		{
 			name: "Second test. Trying to set server port with incorrect value",
-			c: NewConfig(),
+			c:    NewConfig(),
 			args: args{
 				srvPort: -1,
 			},
-			wantErr: true,
+			wantErr:          true,
 			expectedErrorMsg: "SrvPort must be in [1:65535]",
 		},
 	}
@@ -135,7 +140,7 @@ func TestConfig_SetSrvPort(t *testing.T) {
 			if tt.wantErr {
 				assert.EqualErrorf(t, err, tt.expectedErrorMsg, "Error should be: %v, got: %v", tt.expectedErrorMsg, err)
 			} else {
-				assert.Equal(t,tt.args.srvPort,tt.c.srvPort)
+				assert.Equal(t, tt.args.srvPort, tt.c.srvPort)
 			}
 		})
 	}

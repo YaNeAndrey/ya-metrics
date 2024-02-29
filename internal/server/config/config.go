@@ -22,6 +22,7 @@ func NewConfig() *Config {
 	c.srvPort = 8080
 	c.storeInterval = time.Duration(300) * time.Second
 	c.fileStoragePath = path.Join(".", "tmp", "metrics-db.json")
+	c.restoreMetrics = true
 	return &c
 }
 
