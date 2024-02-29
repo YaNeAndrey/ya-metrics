@@ -2,8 +2,10 @@ package config
 
 import (
 	"errors"
-	"github.com/YaNeAndrey/ya-metrics/internal/server/utils"
+	"log"
+	"os"
 	"path"
+	"strings"
 	"time"
 )
 
@@ -46,7 +48,7 @@ func (c *Config) SetStoreInterval(storeInterval int) error {
 }
 
 func (c *Config) SetFileStoragePath(fileStoragePath string) error {
-	err := utils.CheckAndCreateFile(fileStoragePath)
+	err := CheckAndCreateFile(fileStoragePath)
 	if err != nil {
 		return err
 	}
@@ -76,4 +78,27 @@ func (c *Config) FileStoragePath() string {
 
 func (c *Config) RestoreMetrics() bool {
 	return c.restoreMetrics
+}
+
+func CheckAndCreateFile(filePath string) error {
+	_, err := os.Stat(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			log.Println(filePath)
+			separatedPath := strings.Split(filePath, string(os.PathSeparator))
+			log.Println(separatedPath)
+			dirPath := strings.Join(separatedPath[0:len(separatedPath)-1], string(os.PathSeparator))
+			err = os.MkdirAll(dirPath, 0666)
+			if err != nil {
+				return err
+			}
+			_, err := os.Create(filePath)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+	return nil
 }

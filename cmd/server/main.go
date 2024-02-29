@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/YaNeAndrey/ya-metrics/internal/server/config"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/router"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/utils"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
@@ -37,7 +38,7 @@ func main() {
 		os.Exit(0)
 	}()
 	*/
-	err = utils.CheckAndCreateFile(conf.FileStoragePath())
+	err = config.CheckAndCreateFile(conf.FileStoragePath())
 
 	if err != nil {
 		log.Println("From main: " + err.Error())
