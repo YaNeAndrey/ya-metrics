@@ -2,15 +2,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/YaNeAndrey/ya-metrics/internal/server/router"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/utils"
+	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 	"log"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-
-	"github.com/YaNeAndrey/ya-metrics/internal/server/router"
-	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 )
 
 func main() {
@@ -29,7 +25,7 @@ func main() {
 	r := router.InitRouter(*conf, &st)
 
 	//Send Ctrl+C for good exit
-	c := make(chan os.Signal, 1)
+	/*c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
@@ -39,8 +35,11 @@ func main() {
 		}
 		os.Exit(0)
 	}()
-
+	*/
 	go utils.SaveMetricsByTime(*conf, &st)
+
+	defer utils.SaveAllMetricsToFile(*conf, &st)
+
 	err = http.ListenAndServe(fmt.Sprintf("%s:%d", conf.SrvAddr(), conf.SrvPort()), r)
 	if err != nil {
 		panic(err)
