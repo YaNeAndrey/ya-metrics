@@ -51,6 +51,7 @@ func (c *Config) SetFileStoragePath(fileStoragePath string) error {
 	_, err := os.Stat(fileStoragePath)
 	if err != nil {
 		if os.IsNotExist(err) {
+			log.Println(fileStoragePath)
 			separatedPath := strings.Split(fileStoragePath, string(os.PathSeparator))
 			log.Println(separatedPath)
 			dirPath := strings.Join(separatedPath[0:len(separatedPath)-1], string(os.PathSeparator))
