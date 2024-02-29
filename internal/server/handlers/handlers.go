@@ -35,7 +35,7 @@ const tplStr = `<table>
 func HandleGetRoot(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
 	bufMetricMap := make(map[string]string)
 	w.Header().Set("Content-Type", "text/html")
-	w.Header().Set("Content-Encoding", "gzip")
+	//w.Header().Set("Content-Encoding", "gzip")
 	for _, metr := range (*st).GetAllMetrics() {
 		if metr.MType == constants.GaugeMetricType {
 			bufMetricMap[metr.ID] = fmt.Sprintf("%v", *metr.Value)
@@ -86,7 +86,6 @@ func HandleGetMetricValue(w http.ResponseWriter, r *http.Request, st *storage.St
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain")
-	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -112,7 +111,6 @@ func HandlePostMetricValueJSON(w http.ResponseWriter, r *http.Request, st *stora
 		return
 	}
 
-	w.Header().Set("Content-Encoding", "gzip")
 	w.Header().Set("Content-Type", "application/json")
 	_, err = w.Write(body)
 	if err != nil {
@@ -156,7 +154,6 @@ func HandlePostUpdateMetricValueJSON(w http.ResponseWriter, r *http.Request, st 
 		return
 	}
 
-	w.Header().Set("Content-Encoding", "gzip")
 	w.Header().Set("Content-Type", "application/json")
 	_, err = w.Write(body)
 	if err != nil {

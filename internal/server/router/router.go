@@ -40,6 +40,7 @@ func InitRouter(st *storage.StorageRepo) http.Handler {
 			r.Post("/", func(rw http.ResponseWriter, r *http.Request) {
 				handlers.HandlePostUpdateMetricValueJSON(rw, r, st)
 			})
+
 			r.Post("/{type}/{name}/{value}", func(rw http.ResponseWriter, r *http.Request) {
 				handlers.HandlePostUpdateMetricValue(rw, r, st)
 			})
