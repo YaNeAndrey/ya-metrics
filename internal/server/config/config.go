@@ -2,10 +2,8 @@ package config
 
 import (
 	"errors"
-	"log"
-	"os"
+	"github.com/YaNeAndrey/ya-metrics/internal/server/utils"
 	"path"
-	"strings"
 	"time"
 )
 
@@ -48,24 +46,9 @@ func (c *Config) SetStoreInterval(storeInterval int) error {
 }
 
 func (c *Config) SetFileStoragePath(fileStoragePath string) error {
-	_, err := os.Stat(fileStoragePath)
+	err := utils.CheckAndCreateFile(fileStoragePath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			log.Println(fileStoragePath)
-			separatedPath := strings.Split(fileStoragePath, string(os.PathSeparator))
-			log.Println(separatedPath)
-			dirPath := strings.Join(separatedPath[0:len(separatedPath)-1], string(os.PathSeparator))
-			err = os.MkdirAll(dirPath, 0666)
-			if err != nil {
-				return err
-			}
-			_, err := os.Create(fileStoragePath)
-			if err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
+		return err
 	}
 	c.fileStoragePath = fileStoragePath
 	return nil

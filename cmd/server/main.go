@@ -19,6 +19,7 @@ func main() {
 	st := storage.StorageRepo(storage.NewMemStorageJSON(testMetrics))
 
 	err := utils.ReadMetricsFromFile(*conf, &st)
+
 	if err != nil {
 		log.Println(err)
 	}
@@ -36,6 +37,12 @@ func main() {
 		os.Exit(0)
 	}()
 	*/
+	err = utils.CheckAndCreateFile(conf.FileStoragePath())
+
+	if err != nil {
+		log.Println(err)
+	}
+
 	go utils.SaveMetricsByTime(*conf, &st)
 
 	defer utils.SaveAllMetricsToFile(*conf, &st)
