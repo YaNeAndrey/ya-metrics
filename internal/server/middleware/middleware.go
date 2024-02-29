@@ -3,8 +3,10 @@ package middleware
 import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sirupsen/logrus"
+	"log"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/YaNeAndrey/ya-metrics/internal/server/gzip"
@@ -40,17 +42,15 @@ func GzipMiddleware() func(h http.Handler) http.Handler {
 			// который будем передавать следующей функции
 			ow := w
 
-			//ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
-
 			// проверяем, что клиент умеет получать от сервера сжатые данные в формате gzip
-			allAcceptEncodingHeaders := r.Header.Values("Accept-Encoding")
+			allAcceptEncodingHeaders := strings.Split(r.Header.Values("Accept-Encoding")[0], ", ")
+			log.Println(allAcceptEncodingHeaders)
 			if slices.Contains(allAcceptEncodingHeaders, "gzip") {
+				log.Println("gzip - ok")
 				//if content type json or html
-				//responseContentType := ww.Header().Values("Content-Type")
-				//if slices.Contains(responseContentType, "application/json") || slices.Contains(responseContentType, "text/html") {
 				// оборачиваем оригинальный http.ResponseWriter новым с поддержкой сжатия
 				cw := gzip.NewCompressWriter(w)
-				cw.Header().Set("Content-Encoding", "gzip")
+				//cw.Header().Set("Content-Encoding", "gzip")
 				// меняем оригинальный http.ResponseWriter на новый
 				ow = cw
 				// не забываем отправить клиенту все сжатые данные после завершения middleware
@@ -74,6 +74,14 @@ func GzipMiddleware() func(h http.Handler) http.Handler {
 
 			// передаём управление хендлеру
 			h.ServeHTTP(ow, r)
+			/*
+				responseContentType := ow.Header().Values("Content-Type")
+				if slices.Contains(responseContentType, "application/json") || slices.Contains(responseContentType, "text/html") {
+					//change body
+					ow.Header().Set("Content-Encoding", "gzip")
+
+				}*/
+
 		}
 		return http.HandlerFunc(fn)
 	}
