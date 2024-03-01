@@ -1,33 +1,36 @@
 package config
 
+import (
+	"fmt"
+	"time"
+	"errors"
+)
+
+
 type Config struct {
-	scheme string
+	enableTLS bool
 	srvAddr string
 	srvPort int
-	pollInterval int //in seconds
-	reportInterval int //in seconds
+	pollInterval time.Duration //in seconds
+	reportInterval time.Duration //in seconds
 }
 
 func NewConfig()(*Config) {
 	var c Config
-	c.scheme = "http"
-	c.srvAddr = "localhost"
-	c.srvPort = 8080
-	c.pollInterval = 2
-	c.reportInterval = 10
+	c.SetTLS(false)
+	c.SetSrvAddr("localhost")
+	c.SetSrvPort(8080)
+	c.SetPollInterval(2)
+	c.SetReportInterval(10)
 	return &c
 }
 
-func (c *Config) SetAllFields(scheme string,srvAddr string,srvPort int,pollInterval int,reportInterval int){
-	c.scheme = scheme
-	c.srvAddr = srvAddr
-	c.srvPort = srvPort
-	c.pollInterval = pollInterval
-	c.reportInterval = reportInterval
-}
-
 func (c *Config) Scheme() string{
-	return c.scheme
+	scheme := "http"
+	if c.enableTLS {
+		scheme = "https"
+	}
+	return scheme
 }
 
 func (c *Config) SrvAddr() string{
@@ -38,26 +41,47 @@ func (c *Config) SrvPort() int{
 	return c.srvPort
 }
 
-func (c *Config) PollInterval() int{
+func (c *Config) PollInterval() time.Duration{
 	return c.pollInterval
 }
 
-func (c *Config) ReportInterval() int{
+func (c *Config) ReportInterval() time.Duration{
 	return c.reportInterval
+}
+
+func (c *Config) SetTLS(enableTLS bool) {
+	c.enableTLS = enableTLS
 }
 
 func (c *Config) SetSrvAddr(srvAddr string) {
 	c.srvAddr = srvAddr
 }
 
-func (c *Config) SetSrvPort(srvPort int) {
-	c.srvPort = srvPort
+func (c *Config) SetSrvPort(srvPort int) error {
+	if srvPort < 65535 && srvPort > 0 {
+		c.srvPort = srvPort
+		return nil
+	} 
+	return errors.New("SrvPort must be in [1:65535]") 
 }
 
-func (c *Config) SetPollInterval(pollInterval int) {
-	c.pollInterval = pollInterval
+func (c *Config) SetPollInterval(pollInterval int) error {
+	if pollInterval > 0 {
+		c.pollInterval = time.Duration(pollInterval)* time.Second
+		return nil
+	}
+	return errors.New("pollInterval must be greater than 0") 
 }
 
-func (c *Config) SetReportInterval(reportInterval int) {
-	c.reportInterval = reportInterval
+func (c *Config) SetReportInterval(reportInterval int) error {
+	if reportInterval > 0 {
+		c.reportInterval = time.Duration(reportInterval)* time.Second
+		return nil
+	}
+	return errors.New("reportInterval must be greater than 0") 
+}
+
+
+func (c *Config) GetHostnameWithScheme() string {
+	return fmt.Sprintf("%s://%s:%d",c.Scheme(),c.SrvAddr(),c.SrvPort())
 }

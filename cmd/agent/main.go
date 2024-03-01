@@ -1,26 +1,21 @@
 package main
 
 import (
-	"fmt"
-
-	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 	"github.com/YaNeAndrey/ya-metrics/internal/agent/utils"
-	//"github.com/YaNeAndrey/ya-metrics/internal/agent/config"
+	"github.com/YaNeAndrey/ya-metrics/internal/storage"
+	"log"
 )
 
 func main() {
-	ms := storage.NewMemStorage()
+	testMetrics := []storage.Metrics{}
+
+	st := storage.StorageRepo(storage.NewMemStorageJSON(testMetrics))
+
 	cnfg := parseFlags()
-
-	fmt.Println(cnfg.Scheme())
-	fmt.Println(cnfg.SrvAddr())
-	fmt.Println(cnfg.SrvPort())
-	fmt.Println(cnfg.PollInterval())
-	fmt.Println(cnfg.ReportInterval())
-
-
-	utils.StartMetricsMonitor(ms,cnfg)
-
-
-	//cnfg.Init("localhost", 8080,2,10)
+	log.Println(cnfg.Scheme())
+	log.Println(cnfg.SrvAddr())
+	log.Println(cnfg.SrvPort())
+	log.Println(cnfg.PollInterval())
+	log.Println(cnfg.ReportInterval())
+	utils.StartMetricsMonitor(&st, cnfg)
 }
