@@ -12,10 +12,6 @@ func main() {
 	st := storage.StorageRepo(storage.NewMemStorageJSON(testMetrics))
 
 	cnfg := parseFlags()
-	log.Println(cnfg.Scheme())
-	log.Println(cnfg.SrvAddr())
-	log.Println(cnfg.SrvPort())
-	log.Println(cnfg.PollInterval())
-	log.Println(cnfg.ReportInterval())
+	log.Printf("Config { Server: %s://%s:%d; Poll interval: %s; Report interval: %s", cnfg.Scheme(), cnfg.SrvAddr(), cnfg.SrvPort(), cnfg.PollInterval(), cnfg.ReportInterval())
 	utils.StartMetricsMonitor(&st, cnfg)
 }

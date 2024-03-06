@@ -68,7 +68,7 @@ func Test_sendOneMetricUpdate(t *testing.T) {
 	intValue := int64(124)
 
 	testStorage := storage.StorageRepo(storage.NewMemStorageJSON([]storage.Metrics{}))
-
+	client := http.Client{}
 	type args struct {
 		c      *config.Config
 		metric storage.Metrics
@@ -127,7 +127,7 @@ func Test_sendOneMetricUpdate(t *testing.T) {
 			tt.args.c.SetSrvAddr(hostname)
 			tt.args.c.SetSrvPort(port)
 
-			err := sendOneMetricUpdate(tt.args.c, tt.args.metric)
+			err := sendOneMetricUpdate(tt.args.c, tt.args.metric, &client)
 			if err != nil {
 				log.Fatal(err)
 			}

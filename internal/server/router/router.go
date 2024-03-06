@@ -24,10 +24,12 @@ func InitRouter(c config.Config, st *storage.StorageRepo) http.Handler {
 
 	r.Route("/", func(r chi.Router) {
 		r.Get("/", func(rw http.ResponseWriter, req *http.Request) {
-
 			handlers.HandleGetRoot(rw, req, st)
 		})
 
+		r.Get("/ping", func(rw http.ResponseWriter, req *http.Request) {
+			handlers.HandleGetPing(c, rw, req)
+		})
 		r.Route("/value", func(r chi.Router) {
 			r.Post("/", func(rw http.ResponseWriter, r *http.Request) {
 				handlers.HandlePostMetricValueJSON(rw, r, st)

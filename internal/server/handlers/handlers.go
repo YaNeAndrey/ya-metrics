@@ -3,15 +3,14 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/YaNeAndrey/ya-metrics/internal/constants"
+	"github.com/YaNeAndrey/ya-metrics/internal/server/config"
+	"github.com/YaNeAndrey/ya-metrics/internal/storage"
+	"github.com/go-chi/chi/v5"
 	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
-
-	"github.com/YaNeAndrey/ya-metrics/internal/constants"
-	"github.com/YaNeAndrey/ya-metrics/internal/storage"
-
-	"github.com/go-chi/chi/v5"
 )
 
 const tplStr = `<table>
@@ -55,6 +54,15 @@ func HandleGetRoot(w http.ResponseWriter, r *http.Request, st *storage.StorageRe
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
+}
+
+func HandleGetPing(c config.Config, w http.ResponseWriter, r *http.Request) {
+	err := config.CheckDBConnection(c.DBConnectionString())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 }
 

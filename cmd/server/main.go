@@ -12,8 +12,6 @@ import (
 
 func main() {
 	conf := parseFlags()
-	//floatNum := 6.142434
-	//intNum := int64(123456)
 	testMetrics := []storage.Metrics{}
 
 	log.Println(*conf)
@@ -26,18 +24,6 @@ func main() {
 	}
 	r := router.InitRouter(*conf, &st)
 
-	//Send Ctrl+C for good exit
-	/*c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		err := utils.SaveAllMetricsToFile(*conf, &st)
-		if err != nil {
-			os.Exit(1)
-		}
-		os.Exit(0)
-	}()
-	*/
 	err = config.CheckAndCreateFile(conf.FileStoragePath())
 
 	if err != nil {

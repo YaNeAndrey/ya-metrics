@@ -1,20 +1,25 @@
 package config
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"log"
 	"os"
 	"path"
 	"strings"
 	"time"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type Config struct {
-	srvAddr         string
-	srvPort         int
-	storeInterval   time.Duration
-	fileStoragePath string
-	restoreMetrics  bool
+	srvAddr            string
+	srvPort            int
+	storeInterval      time.Duration
+	fileStoragePath    string
+	dbConnectionString string
+	restoreMetrics     bool
 }
 
 func NewConfig() *Config {
@@ -23,6 +28,7 @@ func NewConfig() *Config {
 	c.srvPort = 8080
 	c.storeInterval = time.Duration(300) * time.Second
 	c.fileStoragePath = path.Join("tmp", "metrics-db.json")
+	c.dbConnectionString = ""
 	c.restoreMetrics = true
 	return &c
 }
@@ -56,6 +62,15 @@ func (c *Config) SetFileStoragePath(fileStoragePath string) error {
 	return nil
 }
 
+func (c *Config) SetDBConnectionString(dbConnectionString string) error {
+	err := CheckDBConnection(dbConnectionString)
+	if err != nil {
+		return err
+	}
+	c.dbConnectionString = dbConnectionString
+	return nil
+}
+
 func (c *Config) SetRestoreMetrics(restoreMetrics bool) {
 	c.restoreMetrics = restoreMetrics
 }
@@ -74,6 +89,10 @@ func (c *Config) StoreInterval() time.Duration {
 
 func (c *Config) FileStoragePath() string {
 	return c.fileStoragePath
+}
+
+func (c *Config) DBConnectionString() string {
+	return c.dbConnectionString
 }
 
 func (c *Config) RestoreMetrics() bool {
@@ -99,6 +118,21 @@ func CheckAndCreateFile(filePath string) error {
 		} else {
 			return err
 		}
+	}
+	return nil
+}
+
+func CheckDBConnection(dbConnectionString string) error {
+	db, err := sql.Open("pgx", dbConnectionString)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err = db.PingContext(ctx); err != nil {
+		return err
 	}
 	return nil
 }

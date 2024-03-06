@@ -18,8 +18,9 @@ import (
 )
 
 func sendAllMetricsUpdates(st *storage.StorageRepo, c *config.Config) {
+	client := http.Client{}
 	for _, metr := range (*st).GetAllMetrics() {
-		err := sendOneMetricUpdate(c, metr)
+		err := sendOneMetricUpdate(c, metr, &client)
 		if err != nil {
 			log.Println(err)
 		}
@@ -32,7 +33,7 @@ func sendAllMetricsUpdates(st *storage.StorageRepo, c *config.Config) {
 	}
 }
 
-func sendOneMetricUpdate(c *config.Config, metric storage.Metrics) error {
+func sendOneMetricUpdate(c *config.Config, metric storage.Metrics, client *http.Client) error {
 	serverAddr := c.GetHostnameWithScheme()
 
 	urlStr, err := url.JoinPath(serverAddr, "update")
@@ -54,7 +55,7 @@ func sendOneMetricUpdate(c *config.Config, metric storage.Metrics) error {
 
 	bodyReader := bytes.NewReader(compressedDate)
 
-	client := &http.Client{}
+	//client := &http.Client{}
 	r, _ := http.NewRequest("POST", urlStr, bodyReader)
 	r.Header.Add("Content-Type", "application/json")
 	r.Header.Add("Content-Encoding", "gzip")
@@ -89,22 +90,6 @@ func Compress(data []byte) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-/*
-	func Decompress(data []byte) ([]byte, error) {
-		// переменная r будет читать входящие данные и распаковывать их
-		r := flate.NewReader(bytes.NewReader(data))
-		defer r.Close()
-
-		var b bytes.Buffer
-		// в переменную b записываются распакованные данные
-		_, err := b.ReadFrom(r)
-		if err != nil {
-			return nil, fmt.Errorf("failed decompress data: %v", err)
-		}
-
-		return b.Bytes(), nil
-	}
-*/
 func StartMetricsMonitor(st *storage.StorageRepo, c *config.Config) {
 	iterCount := int(c.ReportInterval() / c.PollInterval())
 	for {
