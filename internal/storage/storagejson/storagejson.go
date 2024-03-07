@@ -46,6 +46,11 @@ func (ms *MemStorageJSON) GetMetricByNameAndType(metricName string, metricType s
 }
 
 func (ms *MemStorageJSON) UpdateMultipleMetrics(newMetric []storage.Metrics) error {
-	ms.allMetrics = append(ms.allMetrics, newMetric...)
+	for _, metric := range newMetric {
+		err := ms.UpdateOneMetric(metric, false)
+		if err != nil {
+			continue
+		}
+	}
 	return nil
 }
