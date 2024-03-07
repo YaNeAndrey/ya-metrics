@@ -13,7 +13,7 @@ func NewMemStorageJSON(allMetrics []storage.Metrics) *MemStorageJSON {
 	return &MemStorageJSON{allMetrics: allMetrics}
 }
 
-func (ms *MemStorageJSON) UpdateMetric(newMetric storage.Metrics, setCounterDelta bool) error {
+func (ms *MemStorageJSON) UpdateOneMetric(newMetric storage.Metrics, setCounterDelta bool) error {
 	err := newMetric.CheckMetric()
 	if err != nil {
 		return err
@@ -43,4 +43,9 @@ func (ms *MemStorageJSON) GetMetricByNameAndType(metricName string, metricType s
 		}
 	}
 	return storage.Metrics{}, errors.New("metric not found")
+}
+
+func (ms *MemStorageJSON) UpdateMultipleMetrics(newMetric []storage.Metrics) error {
+	ms.allMetrics = append(ms.allMetrics, newMetric...)
+	return nil
 }

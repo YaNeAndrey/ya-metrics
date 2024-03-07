@@ -31,7 +31,7 @@ const tplStr = `<table>
     </tbody>
 </table>`
 
-func HandleGetRoot(w http.ResponseWriter, _ *http.Request, st *storage.StorageRepo) {
+func HandleGetReadMetrics(w http.ResponseWriter, _ *http.Request, st *storage.StorageRepo) {
 	bufMetricMap := make(map[string]string)
 	w.Header().Set("Content-Type", "text/html")
 	metrics, err := (*st).GetAllMetrics()
@@ -72,7 +72,7 @@ func HandleGetPing(c config.Config, w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func HandleGetMetricValue(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
+func HandleGetReadOneMetric(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
 	metricType := strings.ToLower(chi.URLParam(r, "type"))
 	metricName := chi.URLParam(r, "name")
 
@@ -98,6 +98,106 @@ func HandleGetMetricValue(w http.ResponseWriter, r *http.Request, st *storage.St
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+}
+
+func HandlePostReadOneMetricJSON(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "Incorrect Content-Type. application/json required", http.StatusBadRequest)
+	}
+
+	var newMetric storage.Metrics
+	err := json.NewDecoder(r.Body).Decode(&newMetric)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	metricInStorage, err := (*st).GetMetricByNameAndType(newMetric.ID, newMetric.MType)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	body, err := json.Marshal(metricInStorage)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func HandlePostUpdateOneMetric(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
+	metricType := strings.ToLower(chi.URLParam(r, "type"))
+	metricName := chi.URLParam(r, "name")
+	metricValueStr := chi.URLParam(r, "value")
+	if metricType == "" || metricName == "" || metricValueStr == "" {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	statusCode := updateMetric(metricType, metricName, metricValueStr, st)
+	w.WriteHeader(statusCode)
+}
+
+func HandlePostUpdateOneMetricJSON(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "Incorrect Content-Type. application/json required", http.StatusBadRequest)
+	}
+
+	var newMetric storage.Metrics
+	err := json.NewDecoder(r.Body).Decode(&newMetric)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = (*st).UpdateOneMetric(newMetric, false)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	body, err := json.Marshal(newMetric)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func HandlePostUpdateMultipleMetricsJSON(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "Incorrect Content-Type. application/json required", http.StatusBadRequest)
+	}
+
+	var newMetrics []storage.Metrics
+
+	err := json.NewDecoder(r.Body).Decode(&newMetrics)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if len(newMetrics) == 0 {
+		http.Error(w, "array cannot be empty", http.StatusBadRequest)
+		return
+	}
+	err = (*st).UpdateMultipleMetrics(newMetrics)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -131,50 +231,6 @@ func HandlePostMetricValueJSON(w http.ResponseWriter, r *http.Request, st *stora
 	}
 }
 
-func HandlePostUpdateMetricValue(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
-	metricType := strings.ToLower(chi.URLParam(r, "type"))
-	metricName := chi.URLParam(r, "name")
-	metricValueStr := chi.URLParam(r, "value")
-	if metricType == "" || metricName == "" || metricValueStr == "" {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	statusCode := updateMetric(metricType, metricName, metricValueStr, st)
-	w.WriteHeader(statusCode)
-}
-
-func HandlePostUpdateMetricValueJSON(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
-	if r.Header.Get("Content-Type") != "application/json" {
-		http.Error(w, "Incorrect Content-Type. application/json required", http.StatusBadRequest)
-	}
-
-	var newMetric storage.Metrics
-	err := json.NewDecoder(r.Body).Decode(&newMetric)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	err = (*st).UpdateMetric(newMetric, false)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	body, err := json.Marshal(newMetric)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	_, err = w.Write(body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-}
-
 func updateMetric(metricType string, metricName string, metricValueStr string, st *storage.StorageRepo) int {
 	newMetric := storage.Metrics{
 		ID:    metricName,
@@ -206,7 +262,7 @@ func updateMetric(metricType string, metricName string, metricValueStr string, s
 	default:
 		return http.StatusBadRequest
 	}
-	err = (*st).UpdateMetric(newMetric, false)
+	err = (*st).UpdateOneMetric(newMetric, false)
 	if err != nil {
 		return http.StatusInternalServerError
 	}

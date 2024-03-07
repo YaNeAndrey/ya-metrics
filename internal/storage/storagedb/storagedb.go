@@ -40,7 +40,7 @@ func InitStorageDB(connectionString string) (*StorageDB, error) {
 	return &resStorage, nil
 }
 
-func (st *StorageDB) UpdateMetric(newMetric storage.Metrics, setCounterDelta bool) error {
+func (st *StorageDB) UpdateOneMetric(newMetric storage.Metrics, setCounterDelta bool) error {
 	db, err := utils.TryToOpenDBConnection(st.connectionString)
 	if err != nil {
 		return err
@@ -152,6 +152,62 @@ func (st *StorageDB) GetMetricByNameAndType(metricName string, metricType string
 		return storage.Metrics{}, errors.New("incorrect metric type")
 	}
 	return resultMetric, nil
+}
+
+func (st *StorageDB) UpdateMultipleMetrics(newMetrics []storage.Metrics) error {
+	db, err := utils.TryToOpenDBConnection(st.connectionString)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	myContext := context.TODO()
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	for _, metric := range newMetrics {
+
+		metricID, err := GetMetricIDFromBD(myContext, db, metric)
+		if err != nil {
+			return err
+		}
+		switch metric.MType {
+		case constants.GaugeMetricType:
+			{
+				if metricID == 0 {
+					_, err = tx.ExecContext(myContext, "INSERT INTO gauge (name, value) VALUES ($1, $2)", metric.ID, metric.Value)
+					//_, err = InsertGaugeMetric(myContext, db, newMetric)
+					if err != nil {
+						return err
+					}
+				} else {
+					_, err = tx.ExecContext(myContext, "UPDATE gauge SET value = $1 WHERE id = $2;", metric.Value, metricID)
+					if err != nil {
+						return err
+					}
+				}
+			}
+		case constants.CounterMetricType:
+			{
+				if metricID == 0 {
+					_, err = tx.ExecContext(myContext, "INSERT INTO counter (name, delta) VALUES ($1, $2) RETURNING id;", metric.ID, metric.Delta)
+					if err != nil {
+						return err
+					}
+				} else {
+					_, err = db.ExecContext(myContext, "UPDATE counter SET delta = delta+$1 WHERE id = $2;", metric.Delta, metricID)
+					if err != nil {
+						return err
+					}
+				}
+			}
+		default:
+			return errors.New("incorrect metric type")
+		}
+	}
+
+	return tx.Commit()
 }
 
 func GetMetricIDFromBD(myContext context.Context, db *sql.DB, metric storage.Metrics) (int, error) {

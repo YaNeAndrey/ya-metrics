@@ -23,19 +23,24 @@ func InitRouter(c config.Config, st *storage.StorageRepo) http.Handler {
 	r.Use(middleware.GzipMiddleware())
 
 	r.Route("/", func(r chi.Router) {
+		r.Post("/updates/", func(rw http.ResponseWriter, req *http.Request) {
+			handlers.HandlePostUpdateMultipleMetricsJSON(rw, req, st)
+		})
+
 		r.Get("/", func(rw http.ResponseWriter, req *http.Request) {
-			handlers.HandleGetRoot(rw, req, st)
+			handlers.HandleGetReadMetrics(rw, req, st)
 		})
 
 		r.Get("/ping", func(rw http.ResponseWriter, req *http.Request) {
 			handlers.HandleGetPing(c, rw, req)
 		})
+
 		r.Route("/value", func(r chi.Router) {
-			r.Post("/", func(rw http.ResponseWriter, r *http.Request) {
-				handlers.HandlePostMetricValueJSON(rw, r, st)
+			r.Post("/", func(rw http.ResponseWriter, req *http.Request) {
+				handlers.HandlePostReadOneMetricJSON(rw, req, st)
 			})
-			r.Get("/{type}/{name}", func(rw http.ResponseWriter, r *http.Request) {
-				handlers.HandleGetMetricValue(rw, r, st)
+			r.Get("/{type}/{name}", func(rw http.ResponseWriter, req *http.Request) {
+				handlers.HandleGetReadOneMetric(rw, req, st)
 			})
 		})
 
@@ -43,12 +48,11 @@ func InitRouter(c config.Config, st *storage.StorageRepo) http.Handler {
 			if c.StoreInterval() == 0 {
 				r.Use(middleware.SyncUpdateAndFileStorageMiddleware(c, st))
 			}
-
-			r.Post("/", func(rw http.ResponseWriter, r *http.Request) {
-				handlers.HandlePostUpdateMetricValueJSON(rw, r, st)
+			r.Post("/", func(rw http.ResponseWriter, req *http.Request) {
+				handlers.HandlePostUpdateOneMetricJSON(rw, req, st)
 			})
-			r.Post("/{type}/{name}/{value}", func(rw http.ResponseWriter, r *http.Request) {
-				handlers.HandlePostUpdateMetricValue(rw, r, st)
+			r.Post("/{type}/{name}/{value}", func(rw http.ResponseWriter, req *http.Request) {
+				handlers.HandlePostUpdateOneMetric(rw, req, st)
 			})
 		})
 	})

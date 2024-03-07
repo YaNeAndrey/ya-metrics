@@ -42,7 +42,7 @@ func TestHandleGetRoot(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			HandleGetRoot(tt.args.w, tt.args.r, tt.args.st)
+			HandleGetReadMetrics(tt.args.w, tt.args.r, tt.args.st)
 		})
 	}
 }
@@ -123,7 +123,7 @@ func TestHandleGetMetricValue(t *testing.T) {
 			})
 			r.Route("/value", func(r chi.Router) {
 				r.Get("/{type}/{name}", func(rw http.ResponseWriter, r *http.Request) {
-					HandleGetMetricValue(rw, tt.args.req, tt.args.st)
+					HandleGetReadOneMetric(rw, tt.args.req, tt.args.st)
 				})
 			})
 
@@ -227,7 +227,6 @@ func TestHandlePostMetricValueJSON(t *testing.T) {
 			})
 
 			tt.args.req.Header.Add("Content-Type", "application/json")
-			log.Println(tt.args.req)
 			r.ServeHTTP(w, tt.args.req)
 
 			result := w.Result()
@@ -235,7 +234,6 @@ func TestHandlePostMetricValueJSON(t *testing.T) {
 			defer result.Body.Close()
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)
 			_, err := io.ReadAll(result.Body)
-			log.Println(result)
 			if err != nil {
 				log.Fatalf("failed to read response body, err:%v", err)
 			}
@@ -282,7 +280,7 @@ func TestHandlePostUpdateMetricValue(t *testing.T) {
 
 			r.Route("/update", func(r chi.Router) {
 				r.Post("/{type}/{name}/{value}", func(rw http.ResponseWriter, r *http.Request) {
-					HandlePostUpdateMetricValue(rw, r, tt.args.st)
+					HandlePostUpdateOneMetric(rw, r, tt.args.st)
 				})
 			})
 
@@ -335,7 +333,7 @@ func TestHandlePostUpdateMetricValueJSON(t *testing.T) {
 
 			r.Route("/update", func(r chi.Router) {
 				r.Post("/", func(rw http.ResponseWriter, r *http.Request) {
-					HandlePostUpdateMetricValueJSON(rw, r, tt.args.st)
+					HandlePostUpdateOneMetricJSON(rw, r, tt.args.st)
 				})
 			})
 

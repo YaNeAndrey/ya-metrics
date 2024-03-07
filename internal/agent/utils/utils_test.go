@@ -114,7 +114,7 @@ func Test_sendOneMetricUpdate(t *testing.T) {
 			r := chi.NewRouter()
 			r.Route("/update", func(r chi.Router) {
 				r.Post("/", func(rw http.ResponseWriter, r *http.Request) {
-					handlers.HandlePostUpdateMetricValueJSON(rw, r, tt.st)
+					handlers.HandlePostUpdateOneMetricJSON(rw, r, tt.st)
 				})
 			})
 			server := httptest.NewServer(nil)

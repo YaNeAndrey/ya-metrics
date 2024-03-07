@@ -1,7 +1,8 @@
 package storage
 
 type StorageRepo interface {
-	UpdateMetric(newMetric Metrics, setCounterDelta bool) error
+	UpdateOneMetric(newMetric Metrics, setCounterDelta bool) error
+	UpdateMultipleMetrics(newMetrics []Metrics) error
 	GetAllMetrics() ([]Metrics, error)
 	GetMetricByNameAndType(metricName string, metricType string) (Metrics, error)
 	/*

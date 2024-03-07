@@ -117,7 +117,7 @@ func TestMemStorageJSON_UpdateMetric(t *testing.T) {
 			ms := &MemStorageJSON{
 				allMetrics: tt.fields.allMetrics,
 			}
-			if err := ms.UpdateMetric(tt.args.newMetric, tt.args.setCounterDelta); (err != nil) != tt.wantErr {
+			if err := ms.UpdateOneMetric(tt.args.newMetric, tt.args.setCounterDelta); (err != nil) != tt.wantErr {
 				t.Errorf("UpdateMetric() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

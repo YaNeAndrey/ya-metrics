@@ -24,18 +24,63 @@ func sendAllMetricsUpdates(st *storage.StorageRepo, c *config.Config) {
 		log.Println(err)
 		return
 	}
-	for _, metr := range metrics {
-		err := sendOneMetricUpdate(c, metr, &client)
+	err = sendAllMetricsInOneRequest(c, metrics, &client)
+	if err != nil {
+		log.Println(err)
+	}
+
+	/*for _, metr := range metrics {
+		err = sendOneMetricUpdate(c, metr, &client)
 		if err != nil {
 			log.Println(err)
 		}
 	}
+	*/
 	defaultPollInterval := int64(0)
-	err = (*st).UpdateMetric(storage.Metrics{ID: "PollCount", MType: constants.CounterMetricType, Delta: &defaultPollInterval}, true)
+	err = (*st).UpdateOneMetric(storage.Metrics{ID: "PollCount", MType: constants.CounterMetricType, Delta: &defaultPollInterval}, true)
 	if err != nil {
 		log.Println(err)
 		return
 	}
+}
+
+func sendAllMetricsInOneRequest(c *config.Config, metrics []storage.Metrics, client *http.Client) error {
+	serverAddr := c.GetHostnameWithScheme()
+
+	urlStr, err := url.JoinPath(serverAddr, "updates/")
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	jsonDate, err := json.Marshal(metrics)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	compressedDate, err := Compress(jsonDate)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	bodyReader := bytes.NewReader(compressedDate)
+
+	//client := &http.Client{}
+	r, _ := http.NewRequest("POST", urlStr, bodyReader)
+	r.Header.Add("Content-Type", "application/json")
+	r.Header.Add("Content-Encoding", "gzip")
+
+	resp, err := client.Do(r)
+
+	if err != nil {
+		return err
+	}
+	err = resp.Body.Close()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func sendOneMetricUpdate(c *config.Config, metric storage.Metrics, client *http.Client) error {
@@ -81,7 +126,6 @@ func Compress(data []byte) ([]byte, error) {
 	var b bytes.Buffer
 	w := gzip.NewWriter(&b)
 
-	// запись данных
 	_, err := w.Write(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed write data to compress temporary buffer: %v", err)
@@ -148,14 +192,14 @@ func collectNewMetrics(st *storage.StorageRepo) {
 			Value: &metricValue,
 		}
 		//log.Println(newMetric)
-		err := (*st).UpdateMetric(newMetric, false)
+		err := (*st).UpdateOneMetric(newMetric, false)
 		if err != nil {
 			log.Println(err)
 			return
 		}
 	}
 	pollInterval := int64(1)
-	err := (*st).UpdateMetric(storage.Metrics{ID: "PollCount", MType: constants.CounterMetricType, Delta: &pollInterval}, false)
+	err := (*st).UpdateOneMetric(storage.Metrics{ID: "PollCount", MType: constants.CounterMetricType, Delta: &pollInterval}, false)
 	if err != nil {
 		log.Println(err)
 		return
