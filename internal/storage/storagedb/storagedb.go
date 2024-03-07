@@ -185,7 +185,7 @@ func (st *StorageDB) UpdateMultipleMetrics(newMetrics []storage.Metrics) error {
 					//insertQuery := fmt.Sprintf("INSERT INTO counter (name, delta) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET delta = excluded.delta + %d", metric.Delta)
 
 					//_, err = tx.ExecContext(myContext, insertQuery, metric.ID, metric.Delta)
-					_, err = tx.ExecContext(myContext, "INSERT INTO counter (name, delta) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING", metric.ID, metric.Delta)
+					_, err = tx.ExecContext(myContext, "INSERT INTO counter (name, delta) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET delta = counter.delta + $2", metric.ID, metric.Delta)
 
 					if err != nil {
 						return err
