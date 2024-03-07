@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/config"
+	"github.com/YaNeAndrey/ya-metrics/internal/server/utils"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"html/template"
@@ -30,11 +31,15 @@ const tplStr = `<table>
     </tbody>
 </table>`
 
-func HandleGetRoot(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
+func HandleGetRoot(w http.ResponseWriter, _ *http.Request, st *storage.StorageRepo) {
 	bufMetricMap := make(map[string]string)
 	w.Header().Set("Content-Type", "text/html")
-	//w.Header().Set("Content-Encoding", "gzip")
-	for _, metr := range (*st).GetAllMetrics() {
+	metrics, err := (*st).GetAllMetrics()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	for _, metr := range metrics {
 		if metr.MType == constants.GaugeMetricType {
 			bufMetricMap[metr.ID] = fmt.Sprintf("%v", *metr.Value)
 		} else {
@@ -57,12 +62,13 @@ func HandleGetRoot(w http.ResponseWriter, r *http.Request, st *storage.StorageRe
 	w.WriteHeader(http.StatusOK)
 }
 
-func HandleGetPing(c config.Config, w http.ResponseWriter, r *http.Request) {
-	err := config.CheckDBConnection(c.DBConnectionString())
+func HandleGetPing(c config.Config, w http.ResponseWriter, _ *http.Request) {
+	db, err := utils.TryToOpenDBConnection(c.DBConnectionString())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	db.Close()
 	w.WriteHeader(http.StatusOK)
 }
 

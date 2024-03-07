@@ -64,6 +64,8 @@ func (m *Metrics) UpdateMetric(newMetric Metrics, setCounterDelta bool) error {
 			v := *(newMetric.Value)
 			*m.Value = v
 		}
+	default:
+		return errors.New("incorrect metric type")
 	}
 	return nil
 }

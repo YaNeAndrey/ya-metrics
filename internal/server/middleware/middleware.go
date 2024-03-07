@@ -76,7 +76,7 @@ func SyncUpdateAndFileStorageMiddleware(c config.Config, st *storage.StorageRepo
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			h.ServeHTTP(w, r)
 
-			err := utils.SaveAllMetricsToFile(c, st)
+			err := utils.SaveAllMetricsToFile(c.FileStoragePath(), st)
 			if err != nil {
 				return
 			}

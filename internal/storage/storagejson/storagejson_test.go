@@ -1,7 +1,8 @@
-package storage
+package storagejson
 
 import (
 	"github.com/YaNeAndrey/ya-metrics/internal/constants"
+	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 	"reflect"
 	"testing"
 )
@@ -11,17 +12,17 @@ func TestMemStorageJSON_GetAllMetrics(t *testing.T) {
 	intValue := int64(124)
 
 	type fields struct {
-		allMetrics []Metrics
+		allMetrics []storage.Metrics
 	}
 	tests := []struct {
 		name   string
 		fields fields
-		want   []Metrics
+		want   []storage.Metrics
 	}{
 		{
 			name: "First test",
 			fields: fields{
-				allMetrics: []Metrics{
+				allMetrics: []storage.Metrics{
 					{
 						ID:    "GaugeMetric",
 						MType: constants.GaugeMetricType,
@@ -34,7 +35,7 @@ func TestMemStorageJSON_GetAllMetrics(t *testing.T) {
 					},
 				},
 			},
-			want: []Metrics{
+			want: []storage.Metrics{
 				{
 					ID:    "GaugeMetric",
 					MType: constants.GaugeMetricType,
@@ -53,8 +54,9 @@ func TestMemStorageJSON_GetAllMetrics(t *testing.T) {
 			ms := &MemStorageJSON{
 				allMetrics: tt.fields.allMetrics,
 			}
-			if got := ms.GetAllMetrics(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetAllMetrics() = %v, want %v", got, tt.want)
+			metrics, _ := ms.GetAllMetrics()
+			if !reflect.DeepEqual(metrics, tt.want) {
+				t.Errorf("GetAllMetrics() = %v, want %v", metrics, tt.want)
 			}
 		})
 	}
@@ -62,7 +64,7 @@ func TestMemStorageJSON_GetAllMetrics(t *testing.T) {
 
 func TestMemStorageJSON_GetMetricByNameAndType(t *testing.T) {
 	type fields struct {
-		allMetrics []Metrics
+		allMetrics []storage.Metrics
 	}
 	type args struct {
 		metricName string
@@ -72,7 +74,7 @@ func TestMemStorageJSON_GetMetricByNameAndType(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    Metrics
+		want    storage.Metrics
 		wantErr bool
 	}{
 		// TODO: Add test cases.
@@ -96,10 +98,10 @@ func TestMemStorageJSON_GetMetricByNameAndType(t *testing.T) {
 
 func TestMemStorageJSON_UpdateMetric(t *testing.T) {
 	type fields struct {
-		allMetrics []Metrics
+		allMetrics []storage.Metrics
 	}
 	type args struct {
-		newMetric       Metrics
+		newMetric       storage.Metrics
 		setCounterDelta bool
 	}
 	tests := []struct {
@@ -158,7 +160,7 @@ func TestMetrics_CheckMetric(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := &Metrics{
+			m := &storage.Metrics{
 				ID:    tt.fields.ID,
 				MType: tt.fields.MType,
 				Delta: tt.fields.Delta,
@@ -181,13 +183,13 @@ func TestMetrics_Clone(t *testing.T) {
 	tests := []struct {
 		name   string
 		fields fields
-		want   Metrics
+		want   storage.Metrics
 	}{
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := &Metrics{
+			m := &storage.Metrics{
 				ID:    tt.fields.ID,
 				MType: tt.fields.MType,
 				Delta: tt.fields.Delta,
@@ -213,14 +215,14 @@ func TestMetrics_UpdateMetric(t *testing.T) {
 		Value *float64
 	}
 	type args struct {
-		newMetric       Metrics
+		newMetric       storage.Metrics
 		setCounterDelta bool
 	}
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
-		want    Metrics
+		want    storage.Metrics
 		wantErr bool
 	}{
 		{
@@ -231,7 +233,7 @@ func TestMetrics_UpdateMetric(t *testing.T) {
 				Value: &oldFloatValue,
 			},
 			args: args{
-				newMetric: Metrics{
+				newMetric: storage.Metrics{
 					ID:    "GaugeMetric",
 					MType: constants.GaugeMetricType,
 					Value: &newFloatValue,
@@ -239,7 +241,7 @@ func TestMetrics_UpdateMetric(t *testing.T) {
 				setCounterDelta: false,
 			},
 			wantErr: false,
-			want: Metrics{
+			want: storage.Metrics{
 				ID:    "GaugeMetric",
 				MType: constants.GaugeMetricType,
 				Value: &newFloatValue,
@@ -253,7 +255,7 @@ func TestMetrics_UpdateMetric(t *testing.T) {
 				Delta: &oldIntValue,
 			},
 			args: args{
-				newMetric: Metrics{
+				newMetric: storage.Metrics{
 					ID:    "GaugeMetric",
 					MType: constants.CounterMetricType,
 					Delta: &oldIntValue,
@@ -261,7 +263,7 @@ func TestMetrics_UpdateMetric(t *testing.T) {
 				setCounterDelta: false,
 			},
 			wantErr: false,
-			want: Metrics{
+			want: storage.Metrics{
 				ID:    "GaugeMetric",
 				MType: constants.CounterMetricType,
 				Delta: &newIntValue,
@@ -275,7 +277,7 @@ func TestMetrics_UpdateMetric(t *testing.T) {
 				Delta: &oldIntValue,
 			},
 			args: args{
-				newMetric: Metrics{
+				newMetric: storage.Metrics{
 					ID:    "GaugeMetric",
 					MType: constants.CounterMetricType,
 					Delta: &newIntValue,
@@ -283,7 +285,7 @@ func TestMetrics_UpdateMetric(t *testing.T) {
 				setCounterDelta: true,
 			},
 			wantErr: false,
-			want: Metrics{
+			want: storage.Metrics{
 				ID:    "GaugeMetric",
 				MType: constants.CounterMetricType,
 				Delta: &newIntValue,
@@ -292,7 +294,7 @@ func TestMetrics_UpdateMetric(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := &Metrics{
+			m := &storage.Metrics{
 				ID:    tt.fields.ID,
 				MType: tt.fields.MType,
 				Delta: tt.fields.Delta,
@@ -308,7 +310,7 @@ func TestMetrics_UpdateMetric(t *testing.T) {
 
 func TestNewMemStorageJSON(t *testing.T) {
 	type args struct {
-		allMetrics []Metrics
+		allMetrics []storage.Metrics
 	}
 	tests := []struct {
 		name string

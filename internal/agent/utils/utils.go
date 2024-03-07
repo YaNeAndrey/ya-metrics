@@ -19,14 +19,19 @@ import (
 
 func sendAllMetricsUpdates(st *storage.StorageRepo, c *config.Config) {
 	client := http.Client{}
-	for _, metr := range (*st).GetAllMetrics() {
+	metrics, err := (*st).GetAllMetrics()
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	for _, metr := range metrics {
 		err := sendOneMetricUpdate(c, metr, &client)
 		if err != nil {
 			log.Println(err)
 		}
 	}
 	defaultPollInterval := int64(0)
-	err := (*st).UpdateMetric(storage.Metrics{ID: "PollCount", MType: constants.CounterMetricType, Delta: &defaultPollInterval}, true)
+	err = (*st).UpdateMetric(storage.Metrics{ID: "PollCount", MType: constants.CounterMetricType, Delta: &defaultPollInterval}, true)
 	if err != nil {
 		log.Println(err)
 		return

@@ -1,16 +1,11 @@
 package config
 
 import (
-	"context"
-	"database/sql"
 	"errors"
-	"log"
-	"os"
 	"path"
-	"strings"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/YaNeAndrey/ya-metrics/internal/server/utils"
 )
 
 type Config struct {
@@ -54,7 +49,7 @@ func (c *Config) SetStoreInterval(storeInterval int) error {
 }
 
 func (c *Config) SetFileStoragePath(fileStoragePath string) error {
-	err := CheckAndCreateFile(fileStoragePath)
+	err := utils.CheckAndCreateFile(fileStoragePath)
 	if err != nil {
 		return err
 	}
@@ -63,10 +58,11 @@ func (c *Config) SetFileStoragePath(fileStoragePath string) error {
 }
 
 func (c *Config) SetDBConnectionString(dbConnectionString string) error {
-	err := CheckDBConnection(dbConnectionString)
+	db, err := utils.TryToOpenDBConnection(dbConnectionString)
 	if err != nil {
 		return err
 	}
+	db.Close()
 	c.dbConnectionString = dbConnectionString
 	return nil
 }
@@ -97,42 +93,4 @@ func (c *Config) DBConnectionString() string {
 
 func (c *Config) RestoreMetrics() bool {
 	return c.restoreMetrics
-}
-
-func CheckAndCreateFile(filePath string) error {
-	_, err := os.Stat(filePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			log.Println(filePath)
-			separatedPath := strings.Split(filePath, string(os.PathSeparator))
-			log.Println(separatedPath)
-			dirPath := strings.Join(separatedPath[0:len(separatedPath)-1], string(os.PathSeparator))
-			err = os.MkdirAll(dirPath, 0666)
-			if err != nil {
-				return err
-			}
-			_, err := os.Create(filePath)
-			if err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-	}
-	return nil
-}
-
-func CheckDBConnection(dbConnectionString string) error {
-	db, err := sql.Open("pgx", dbConnectionString)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err = db.PingContext(ctx); err != nil {
-		return err
-	}
-	return nil
 }

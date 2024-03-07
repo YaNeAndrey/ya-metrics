@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/YaNeAndrey/ya-metrics/internal/storage/storagejson"
 	"io"
 	"log"
 	"net/http"
@@ -63,7 +64,7 @@ func TestHandleGetMetricValue(t *testing.T) {
 			Delta: &intValue,
 		},
 	}
-	testStorage := storage.StorageRepo(storage.NewMemStorageJSON(testMetrics))
+	testStorage := storage.StorageRepo(storagejson.NewMemStorageJSON(testMetrics))
 
 	type args struct {
 		req *http.Request
@@ -158,7 +159,7 @@ func TestHandlePostMetricValueJSON(t *testing.T) {
 			Delta: &intValue,
 		},
 	}
-	testStorage := storage.StorageRepo(storage.NewMemStorageJSON(testMetrics))
+	testStorage := storage.StorageRepo(storagejson.NewMemStorageJSON(testMetrics))
 
 	existedMetric, _ := json.Marshal(storage.Metrics{ID: "GaugeMetric", MType: constants.GaugeMetricType, Delta: &intValue, Value: &floatValue})
 	notExistedMetric, _ := json.Marshal(storage.Metrics{ID: "NotExistedCounterMetric", MType: constants.CounterMetricType})
@@ -246,7 +247,7 @@ func TestHandlePostMetricValueJSON(t *testing.T) {
 
 // ++++
 func TestHandlePostUpdateMetricValue(t *testing.T) {
-	testStorage := storage.StorageRepo(storage.NewMemStorageJSON([]storage.Metrics{}))
+	testStorage := storage.StorageRepo(storagejson.NewMemStorageJSON([]storage.Metrics{}))
 
 	type args struct {
 		req *http.Request
@@ -297,7 +298,7 @@ func TestHandlePostUpdateMetricValue(t *testing.T) {
 
 // ++++
 func TestHandlePostUpdateMetricValueJSON(t *testing.T) {
-	testStorage := storage.StorageRepo(storage.NewMemStorageJSON([]storage.Metrics{}))
+	testStorage := storage.StorageRepo(storagejson.NewMemStorageJSON([]storage.Metrics{}))
 	floatValue := float64(123.45)
 	correctMetric, _ := json.Marshal(storage.Metrics{ID: "gaugeMetric", MType: constants.GaugeMetricType, Value: &floatValue})
 	incorrectMetric, _ := json.Marshal(storage.Metrics{ID: "countermetric", MType: constants.CounterMetricType, Value: &floatValue})

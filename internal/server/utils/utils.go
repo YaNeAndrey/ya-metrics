@@ -1,22 +1,30 @@
 package utils
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
-	"github.com/YaNeAndrey/ya-metrics/internal/server/config"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
+	"github.com/YaNeAndrey/ya-metrics/internal/storage/storagejson"
 	"log"
 	"os"
+	"strings"
 	"time"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-func SaveAllMetricsToFile(c config.Config, st *storage.StorageRepo) error {
-	metricSlice := (*st).GetAllMetrics()
+func SaveAllMetricsToFile(filePath string, st *storage.StorageRepo) error {
+	metricSlice, err := (*st).GetAllMetrics()
+	if err != nil {
+		return err
+	}
 	metricsInBytes, err := json.Marshal(metricSlice)
 	if err != nil {
 		return err
 	}
 
-	metricFile, err := os.OpenFile(c.FileStoragePath(), os.O_TRUNC|os.O_RDWR, 0666)
+	metricFile, err := os.OpenFile(filePath, os.O_TRUNC|os.O_RDWR, 0666)
 	if err != nil {
 		return err
 	}
@@ -29,36 +37,67 @@ func SaveAllMetricsToFile(c config.Config, st *storage.StorageRepo) error {
 	return nil
 }
 
-func ReadMetricsFromFile(c config.Config, st *storage.StorageRepo) error {
-	if c.RestoreMetrics() {
-		err := config.CheckAndCreateFile(c.FileStoragePath())
+func ReadMetricsFromFile(filePath string, st *storage.StorageRepo) error {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+	var metricsSlice []storage.Metrics
+	err = json.Unmarshal(data, &metricsSlice)
+	if err != nil {
+		return err
+	}
+	newStorage := storage.StorageRepo(storagejson.NewMemStorageJSON(metricsSlice))
+	*st = newStorage
+	return nil
+}
+
+func SaveMetricsByTime(filePath string, storeInterval time.Duration, st *storage.StorageRepo) {
+	if storeInterval == 0 {
+		return
+	}
+	for {
+		err := SaveAllMetricsToFile(filePath, st)
 		if err != nil {
+			log.Println("SaveMetricsByTime" + err.Error())
+		}
+		time.Sleep(storeInterval)
+	}
+}
+
+func CheckAndCreateFile(filePath string) error {
+	_, err := os.Stat(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			separatedPath := strings.Split(filePath, string(os.PathSeparator))
+			dirPath := strings.Join(separatedPath[0:len(separatedPath)-1], string(os.PathSeparator))
+			err = os.MkdirAll(dirPath, 0666)
+			if err != nil {
+				return err
+			}
+			_, err := os.Create(filePath)
+			if err != nil {
+				return err
+			}
+		} else {
 			return err
 		}
-		data, err := os.ReadFile(c.FileStoragePath())
-		if err != nil {
-			return err
-		}
-		var metricsSlice []storage.Metrics
-		err = json.Unmarshal(data, &metricsSlice)
-		if err != nil {
-			return err
-		}
-		newStorage := storage.StorageRepo(storage.NewMemStorageJSON(metricsSlice))
-		*st = newStorage
 	}
 	return nil
 }
 
-func SaveMetricsByTime(c config.Config, st *storage.StorageRepo) {
-	if c.StoreInterval() == 0 {
-		return
+func TryToOpenDBConnection(dbConnectionString string) (*sql.DB, error) {
+	db, err := sql.Open("pgx", dbConnectionString)
+	if err != nil {
+		_ = db.Close()
+		return nil, err
 	}
-	for {
-		err := SaveAllMetricsToFile(c, st)
-		if err != nil {
-			log.Println("SaveMetricsByTime" + err.Error())
-		}
-		time.Sleep(c.StoreInterval())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err = db.PingContext(ctx); err != nil {
+		_ = db.Close()
+		return nil, err
 	}
+	return db, nil
 }

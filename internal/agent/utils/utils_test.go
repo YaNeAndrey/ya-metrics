@@ -3,6 +3,7 @@ package utils
 import (
 	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/handlers"
+	"github.com/YaNeAndrey/ya-metrics/internal/storage/storagejson"
 	"github.com/go-chi/chi/v5"
 	"log"
 	"net/http"
@@ -20,7 +21,7 @@ import (
 // +++
 func Test_collectNewMetrics(t *testing.T) {
 
-	testStorage := storage.StorageRepo(storage.NewMemStorageJSON([]storage.Metrics{}))
+	testStorage := storage.StorageRepo(storagejson.NewMemStorageJSON([]storage.Metrics{}))
 
 	type args struct {
 		st *storage.StorageRepo
@@ -39,7 +40,8 @@ func Test_collectNewMetrics(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			collectNewMetrics(tt.args.st)
-			assert.Equal(t, 29, len((*tt.args.st).GetAllMetrics()))
+			metrics, _ := (*tt.args.st).GetAllMetrics()
+			assert.Equal(t, 29, len(metrics))
 		})
 	}
 }
@@ -67,7 +69,7 @@ func Test_sendOneMetricUpdate(t *testing.T) {
 	floatValue := float64(124.2345)
 	intValue := int64(124)
 
-	testStorage := storage.StorageRepo(storage.NewMemStorageJSON([]storage.Metrics{}))
+	testStorage := storage.StorageRepo(storagejson.NewMemStorageJSON([]storage.Metrics{}))
 	client := http.Client{}
 	type args struct {
 		c      *config.Config

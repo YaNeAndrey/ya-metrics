@@ -2,7 +2,7 @@ package storage
 
 type StorageRepo interface {
 	UpdateMetric(newMetric Metrics, setCounterDelta bool) error
-	GetAllMetrics() []Metrics
+	GetAllMetrics() ([]Metrics, error)
 	GetMetricByNameAndType(metricName string, metricType string) (Metrics, error)
 	/*
 		UpdateGaugeMetric(name string, newValue float64)
