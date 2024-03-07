@@ -49,20 +49,20 @@ func (st *StorageDB) UpdateMetric(newMetric storage.Metrics, setCounterDelta boo
 
 	myContext := context.TODO()
 
-	metricId, err := GetMetricIDFromBD(myContext, db, newMetric)
+	metricID, err := GetMetricIDFromBD(myContext, db, newMetric)
 	if err != nil {
 		return err
 	}
 	switch newMetric.MType {
 	case constants.GaugeMetricType:
 		{
-			if metricId == 0 {
-				metricId, err = InsertGaugeMetric(myContext, db, newMetric)
+			if metricID == 0 {
+				metricID, err = InsertGaugeMetric(myContext, db, newMetric)
 				if err != nil {
 					return err
 				}
 			} else {
-				_, err = db.ExecContext(myContext, "UPDATE gauge SET value = $1 WHERE id = $2;", newMetric.Value, metricId)
+				_, err = db.ExecContext(myContext, "UPDATE gauge SET value = $1 WHERE id = $2;", newMetric.Value, metricID)
 				if err != nil {
 					return err
 				}
@@ -70,17 +70,17 @@ func (st *StorageDB) UpdateMetric(newMetric storage.Metrics, setCounterDelta boo
 		}
 	case constants.CounterMetricType:
 		{
-			if metricId == 0 {
-				metricId, err = InsertCounterMetric(myContext, db, newMetric)
+			if metricID == 0 {
+				metricID, err = InsertCounterMetric(myContext, db, newMetric)
 				if err != nil {
 					return err
 				}
 			} else {
 				if setCounterDelta {
-					_, err = db.ExecContext(myContext, "UPDATE counter SET delta = $1 WHERE id = $2;", newMetric.Delta, metricId)
+					_, err = db.ExecContext(myContext, "UPDATE counter SET delta = $1 WHERE id = $2;", newMetric.Delta, metricID)
 
 				} else {
-					_, err = db.ExecContext(myContext, "UPDATE counter SET delta = delta+$1 WHERE id = $2;", newMetric.Delta, metricId)
+					_, err = db.ExecContext(myContext, "UPDATE counter SET delta = delta+$1 WHERE id = $2;", newMetric.Delta, metricID)
 				}
 				if err != nil {
 					return err
@@ -236,14 +236,13 @@ func SelectAllCounterMetrics(myContext context.Context, db *sql.DB) ([]storage.M
 	}
 
 	for rows.Next() {
-		var buf bufMetric
-		err = rows.Scan(&buf.name, &buf.delta)
+		bufMetric := storage.Metrics{MType: constants.CounterMetricType, Delta: new(int64)}
+		err = rows.Scan(&bufMetric.ID, bufMetric.Delta)
 		if err != nil {
 			return nil, err
 		}
 
-		newMetric := storage.Metrics{ID: buf.name, MType: constants.CounterMetricType, Delta: &(buf.delta)}
-		metrics = append(metrics, newMetric)
+		metrics = append(metrics, bufMetric.Clone())
 	}
 
 	err = rows.Err()
