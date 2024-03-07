@@ -57,7 +57,7 @@ func (st *StorageDB) UpdateMetric(newMetric storage.Metrics, setCounterDelta boo
 	case constants.GaugeMetricType:
 		{
 			if metricID == 0 {
-				metricID, err = InsertGaugeMetric(myContext, db, newMetric)
+				_, err = InsertGaugeMetric(myContext, db, newMetric)
 				if err != nil {
 					return err
 				}
@@ -71,7 +71,7 @@ func (st *StorageDB) UpdateMetric(newMetric storage.Metrics, setCounterDelta boo
 	case constants.CounterMetricType:
 		{
 			if metricID == 0 {
-				metricID, err = InsertCounterMetric(myContext, db, newMetric)
+				_, err = InsertCounterMetric(myContext, db, newMetric)
 				if err != nil {
 					return err
 				}
@@ -229,11 +229,6 @@ func SelectAllCounterMetrics(myContext context.Context, db *sql.DB) ([]storage.M
 	defer rows.Close()
 
 	var metrics []storage.Metrics
-
-	type bufMetric struct {
-		name  string
-		delta int64
-	}
 
 	for rows.Next() {
 		bufMetric := storage.Metrics{MType: constants.CounterMetricType, Delta: new(int64)}
