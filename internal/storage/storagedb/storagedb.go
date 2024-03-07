@@ -140,7 +140,7 @@ func (st *StorageDB) GetMetricByNameAndType(metricName string, metricType string
 		}
 	case constants.CounterMetricType:
 		{
-			row := db.QueryRowContext(myContext, "SELECT value FROM counter WHERE name = $1 LIMIT 1;", metricName)
+			row := db.QueryRowContext(myContext, "SELECT delta FROM counter WHERE name = $1 LIMIT 1;", metricName)
 			var delta int64
 			err := row.Scan(&delta)
 			if err != nil {
