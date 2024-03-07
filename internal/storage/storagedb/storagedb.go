@@ -8,7 +8,6 @@ import (
 	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/utils"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
-
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -175,28 +174,25 @@ func (st *StorageDB) UpdateMultipleMetrics(newMetrics []storage.Metrics) error {
 		switch metric.MType {
 		case constants.GaugeMetricType:
 			{
-				if metricID == 0 {
-					_, err = tx.ExecContext(myContext, "INSERT INTO gauge (name, value) VALUES ($1, $2)", metric.ID, metric.Value)
-					//_, err = InsertGaugeMetric(myContext, db, newMetric)
-					if err != nil {
-						return err
-					}
-				} else {
-					_, err = tx.ExecContext(myContext, "UPDATE gauge SET value = $1 WHERE id = $2;", metric.Value, metricID)
-					if err != nil {
-						return err
-					}
+				_, err = tx.ExecContext(myContext, "INSERT INTO gauge (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = excluded.value;", metric.ID, metric.Value)
+				if err != nil {
+					return err
 				}
 			}
 		case constants.CounterMetricType:
 			{
 				if metricID == 0 {
-					_, err = tx.ExecContext(myContext, "INSERT INTO counter (name, delta) VALUES ($1, $2) RETURNING id;", metric.ID, metric.Delta)
+					//insertQuery := fmt.Sprintf("INSERT INTO counter (name, delta) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET delta = excluded.delta + %d", metric.Delta)
+
+					//_, err = tx.ExecContext(myContext, insertQuery, metric.ID, metric.Delta)
+					_, err = tx.ExecContext(myContext, "INSERT INTO counter (name, delta) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET delta = excluded.delta + $2", metric.ID, metric.Delta)
+
 					if err != nil {
 						return err
+
 					}
 				} else {
-					_, err = db.ExecContext(myContext, "UPDATE counter SET delta = delta+$1 WHERE id = $2;", metric.Delta, metricID)
+					_, err = tx.ExecContext(myContext, "UPDATE counter SET delta = delta+$1 WHERE id = $2;", metric.Delta, metricID)
 					if err != nil {
 						return err
 					}
