@@ -74,11 +74,13 @@ func sendAllMetricsInOneRequest(c *config.Config, metrics []storage.Metrics, cli
 	r.Header.Add("Content-Type", "application/json")
 	r.Header.Add("Content-Encoding", "gzip")
 
-	resp := new(http.Response)
 	err = retry.Retry(
 		func(attempt uint) error {
-			defer resp.Body.Close()
-			resp, err = client.Do(r)
+			resp, err := client.Do(r)
+			if err != nil {
+				return err
+			}
+			err = resp.Body.Close()
 			if err != nil {
 				return err
 			}
@@ -93,10 +95,7 @@ func sendAllMetricsInOneRequest(c *config.Config, metrics []storage.Metrics, cli
 	if err != nil {
 		return err
 	}
-	err = resp.Body.Close()
-	if err != nil {
-		return err
-	}
+
 	return nil
 }
 
