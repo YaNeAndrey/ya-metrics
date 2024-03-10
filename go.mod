@@ -3,6 +3,7 @@ module github.com/YaNeAndrey/ya-metrics
 go 1.21.6
 
 require (
+	github.com/Rican7/retry v0.3.1 // indirect
 	github.com/caarlos0/env/v6 v6.10.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-chi/chi/v5 v5.0.11 // indirect
@@ -13,6 +14,7 @@ require (
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/sethvargo/go-retry v0.2.4 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
 	golang.org/x/crypto v0.21.0 // indirect

@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"github.com/Rican7/retry"
+	"github.com/Rican7/retry/backoff"
+	"github.com/Rican7/retry/strategy"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage/storagejson"
 	"log"
@@ -95,7 +98,19 @@ func TryToOpenDBConnection(dbConnectionString string) (*sql.DB, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err = db.PingContext(ctx); err != nil {
+
+	err = retry.Retry(
+		func(attempt uint) error {
+			if err = db.PingContext(ctx); err != nil {
+				return err
+			}
+			return nil
+		},
+		strategy.Limit(4),
+		strategy.Backoff(backoff.Incremental(-1*time.Second, 2*time.Second)),
+	)
+
+	if err != nil {
 		_ = db.Close()
 		return nil, err
 	}

@@ -5,6 +5,9 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"github.com/Rican7/retry"
+	"github.com/Rican7/retry/backoff"
+	"github.com/Rican7/retry/strategy"
 	"log"
 	"math/rand"
 	"net/http"
@@ -71,7 +74,21 @@ func sendAllMetricsInOneRequest(c *config.Config, metrics []storage.Metrics, cli
 	r.Header.Add("Content-Type", "application/json")
 	r.Header.Add("Content-Encoding", "gzip")
 
-	resp, err := client.Do(r)
+	resp := new(http.Response)
+	err = retry.Retry(
+		func(attempt uint) error {
+			resp, err = client.Do(r)
+			log.Println(attempt)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+		strategy.Limit(4),
+		strategy.Backoff(backoff.Incremental(-1*time.Second, 2*time.Second)),
+	)
+
+	//resp, err := client.Do(r)
 
 	if err != nil {
 		return err
