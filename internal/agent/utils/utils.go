@@ -77,8 +77,8 @@ func sendAllMetricsInOneRequest(c *config.Config, metrics []storage.Metrics, cli
 	resp := new(http.Response)
 	err = retry.Retry(
 		func(attempt uint) error {
+			defer resp.Body.Close()
 			resp, err = client.Do(r)
-			log.Println(attempt)
 			if err != nil {
 				return err
 			}
