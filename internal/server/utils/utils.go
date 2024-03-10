@@ -9,7 +9,7 @@ import (
 	"github.com/Rican7/retry/strategy"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage/storagejson"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"strings"
 	"time"

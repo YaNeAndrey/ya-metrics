@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"path"
 	"time"
 
@@ -93,4 +94,12 @@ func (c *Config) DBConnectionString() string {
 
 func (c *Config) RestoreMetrics() bool {
 	return c.restoreMetrics
+}
+
+func (c *Config) String() string {
+	if c.dbConnectionString != "" {
+		return fmt.Sprintf("Config { EndPoint: %s:%d; Store interval: %s; DB connection string: %s } ", c.SrvAddr(), c.SrvPort(), c.StoreInterval(), c.DBConnectionString())
+
+	}
+	return fmt.Sprintf("Config { EndPoint: %s:%d; Store interval: %s; File storage: %s; } ", c.SrvAddr(), c.SrvPort(), c.StoreInterval(), c.FileStoragePath())
 }

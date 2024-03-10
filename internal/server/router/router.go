@@ -8,7 +8,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 func InitRouter(c config.Config, st *storage.StorageRepo) http.Handler {
@@ -17,9 +17,9 @@ func InitRouter(c config.Config, st *storage.StorageRepo) http.Handler {
 		rw.WriteHeader(http.StatusNotFound)
 	})
 
-	log := logrus.New()
-	log.SetLevel(logrus.InfoLevel)
-	r.Use(middleware.MyLoggerMiddleware(log))
+	logger := log.New()
+	logger.SetLevel(log.InfoLevel)
+	r.Use(middleware.MyLoggerMiddleware(logger))
 	r.Use(middleware.GzipMiddleware())
 
 	r.Route("/", func(r chi.Router) {

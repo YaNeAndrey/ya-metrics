@@ -7,11 +7,14 @@ import (
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage/storagedb"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage/storagejson"
-	"log"
+	log "github.com/sirupsen/logrus"
+
 	"net/http"
 )
 
 func main() {
+	log.SetReportCaller(true)
+
 	conf := parseFlags()
 	testMetrics := []storage.Metrics{}
 
@@ -30,7 +33,7 @@ func main() {
 
 		err = utils.ReadMetricsFromFile(conf.FileStoragePath(), &st)
 		if err != nil {
-			log.Println("From main: " + err.Error())
+			log.Println(err.Error())
 		}
 
 		if conf.StoreInterval() != 0 {
@@ -38,7 +41,7 @@ func main() {
 		}
 		defer utils.SaveAllMetricsToFile(conf.FileStoragePath(), &st)
 	}
-
+	log.Printf((*conf).String())
 	r := router.InitRouter(*conf, &st)
 	err = http.ListenAndServe(fmt.Sprintf("%s:%d", conf.SrvAddr(), conf.SrvPort()), r)
 	if err != nil {
