@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/YaNeAndrey/ya-metrics/internal/constants"
@@ -34,7 +35,8 @@ const tplStr = `<table>
 func HandleGetReadMetrics(w http.ResponseWriter, _ *http.Request, st *storage.StorageRepo) {
 	bufMetricMap := make(map[string]string)
 	w.Header().Set("Content-Type", "text/html")
-	metrics, err := (*st).GetAllMetrics()
+	myContext := context.TODO()
+	metrics, err := (*st).GetAllMetrics(myContext)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -78,7 +80,8 @@ func HandleGetReadOneMetric(w http.ResponseWriter, r *http.Request, st *storage.
 
 	body := ""
 
-	metricInStorage, err := (*st).GetMetricByNameAndType(metricName, metricType)
+	myContext := context.TODO()
+	metricInStorage, err := (*st).GetMetricByNameAndType(myContext, metricName, metricType)
 	if err != nil {
 		//http.Error(w, err.Error(), http.StatusNotFound)
 		w.WriteHeader(http.StatusNotFound)
@@ -112,7 +115,8 @@ func HandlePostReadOneMetricJSON(w http.ResponseWriter, r *http.Request, st *sto
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	metricInStorage, err := (*st).GetMetricByNameAndType(newMetric.ID, newMetric.MType)
+	myContext := context.TODO()
+	metricInStorage, err := (*st).GetMetricByNameAndType(myContext, newMetric.ID, newMetric.MType)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -155,7 +159,8 @@ func HandlePostUpdateOneMetricJSON(w http.ResponseWriter, r *http.Request, st *s
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = (*st).UpdateOneMetric(newMetric, false)
+	myContext := context.TODO()
+	err = (*st).UpdateOneMetric(myContext, newMetric, false)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -192,7 +197,8 @@ func HandlePostUpdateMultipleMetricsJSON(w http.ResponseWriter, r *http.Request,
 		http.Error(w, "array cannot be empty", http.StatusBadRequest)
 		return
 	}
-	err = (*st).UpdateMultipleMetrics(newMetrics)
+	myContext := context.TODO()
+	err = (*st).UpdateMultipleMetrics(myContext, newMetrics)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -212,7 +218,8 @@ func HandlePostMetricValueJSON(w http.ResponseWriter, r *http.Request, st *stora
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	metricInStorage, err := (*st).GetMetricByNameAndType(newMetric.ID, newMetric.MType)
+	myContext := context.TODO()
+	metricInStorage, err := (*st).GetMetricByNameAndType(myContext, newMetric.ID, newMetric.MType)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -262,7 +269,8 @@ func updateMetric(metricType string, metricName string, metricValueStr string, s
 	default:
 		return http.StatusBadRequest
 	}
-	err = (*st).UpdateOneMetric(newMetric, false)
+	myContext := context.TODO()
+	err = (*st).UpdateOneMetric(myContext, newMetric, false)
 	if err != nil {
 		return http.StatusInternalServerError
 	}

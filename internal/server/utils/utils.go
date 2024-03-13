@@ -18,7 +18,8 @@ import (
 )
 
 func SaveAllMetricsToFile(filePath string, st *storage.StorageRepo) error {
-	metricSlice, err := (*st).GetAllMetrics()
+	myContext := context.TODO()
+	metricSlice, err := (*st).GetAllMetrics(myContext)
 	if err != nil {
 		return err
 	}

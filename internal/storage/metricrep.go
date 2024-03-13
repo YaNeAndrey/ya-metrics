@@ -1,10 +1,12 @@
 package storage
 
+import "context"
+
 type StorageRepo interface {
-	UpdateOneMetric(newMetric Metrics, setCounterDelta bool) error
-	UpdateMultipleMetrics(newMetrics []Metrics) error
-	GetAllMetrics() ([]Metrics, error)
-	GetMetricByNameAndType(metricName string, metricType string) (Metrics, error)
+	UpdateOneMetric(c context.Context, newMetric Metrics, setCounterDelta bool) error
+	UpdateMultipleMetrics(c context.Context, newMetrics []Metrics) error
+	GetAllMetrics(c context.Context) ([]Metrics, error)
+	GetMetricByNameAndType(c context.Context, metricName string, metricType string) (Metrics, error)
 	/*
 		UpdateGaugeMetric(name string, newValue float64)
 		UpdateCounterMetric(name string, newValue int64)

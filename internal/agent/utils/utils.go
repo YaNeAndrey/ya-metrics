@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/Rican7/retry"
@@ -22,7 +23,8 @@ import (
 
 func sendAllMetricsUpdates(st *storage.StorageRepo, c *config.Config) {
 	client := http.Client{}
-	metrics, err := (*st).GetAllMetrics()
+	myContext := context.TODO()
+	metrics, err := (*st).GetAllMetrics(myContext)
 	if err != nil {
 		log.Println(err)
 		return
@@ -40,7 +42,7 @@ func sendAllMetricsUpdates(st *storage.StorageRepo, c *config.Config) {
 	}
 	*/
 	defaultPollInterval := int64(0)
-	err = (*st).UpdateOneMetric(storage.Metrics{ID: "PollCount", MType: constants.CounterMetricType, Delta: &defaultPollInterval}, true)
+	err = (*st).UpdateOneMetric(myContext, storage.Metrics{ID: "PollCount", MType: constants.CounterMetricType, Delta: &defaultPollInterval}, true)
 	if err != nil {
 		log.Println(err)
 		return
@@ -201,6 +203,7 @@ func collectNewMetrics(st *storage.StorageRepo) {
 		"RandomValue":   rand.Float64(),
 	}
 
+	myContext := context.TODO()
 	for metricName, metricValue := range gaugeMetrics {
 		newMetric := storage.Metrics{
 			ID:    metricName,
@@ -208,14 +211,14 @@ func collectNewMetrics(st *storage.StorageRepo) {
 			Value: &metricValue,
 		}
 		//log.Println(newMetric)
-		err := (*st).UpdateOneMetric(newMetric, false)
+		err := (*st).UpdateOneMetric(myContext, newMetric, false)
 		if err != nil {
 			log.Println(err)
 			return
 		}
 	}
 	pollInterval := int64(1)
-	err := (*st).UpdateOneMetric(storage.Metrics{ID: "PollCount", MType: constants.CounterMetricType, Delta: &pollInterval}, false)
+	err := (*st).UpdateOneMetric(myContext, storage.Metrics{ID: "PollCount", MType: constants.CounterMetricType, Delta: &pollInterval}, false)
 	if err != nil {
 		log.Println(err)
 		return

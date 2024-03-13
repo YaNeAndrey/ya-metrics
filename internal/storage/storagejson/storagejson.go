@@ -1,6 +1,7 @@
 package storagejson
 
 import (
+	"context"
 	"errors"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 )
@@ -13,7 +14,7 @@ func NewMemStorageJSON(allMetrics []storage.Metrics) *MemStorageJSON {
 	return &MemStorageJSON{allMetrics: allMetrics}
 }
 
-func (ms *MemStorageJSON) UpdateOneMetric(newMetric storage.Metrics, setCounterDelta bool) error {
+func (ms *MemStorageJSON) UpdateOneMetric(c context.Context, newMetric storage.Metrics, setCounterDelta bool) error {
 	err := newMetric.CheckMetric()
 	if err != nil {
 		return err
@@ -28,12 +29,12 @@ func (ms *MemStorageJSON) UpdateOneMetric(newMetric storage.Metrics, setCounterD
 	return nil
 }
 
-func (ms *MemStorageJSON) GetAllMetrics() ([]storage.Metrics, error) {
+func (ms *MemStorageJSON) GetAllMetrics(c context.Context) ([]storage.Metrics, error) {
 	return ms.allMetrics, nil
 }
 
-func (ms *MemStorageJSON) GetMetricByNameAndType(metricName string, metricType string) (storage.Metrics, error) {
-	metrics, err := ms.GetAllMetrics()
+func (ms *MemStorageJSON) GetMetricByNameAndType(c context.Context, metricName string, metricType string) (storage.Metrics, error) {
+	metrics, err := ms.GetAllMetrics(c)
 	if err != nil {
 		return storage.Metrics{}, err
 	}
@@ -45,9 +46,9 @@ func (ms *MemStorageJSON) GetMetricByNameAndType(metricName string, metricType s
 	return storage.Metrics{}, errors.New("metric not found")
 }
 
-func (ms *MemStorageJSON) UpdateMultipleMetrics(newMetric []storage.Metrics) error {
+func (ms *MemStorageJSON) UpdateMultipleMetrics(c context.Context, newMetric []storage.Metrics) error {
 	for _, metric := range newMetric {
-		err := ms.UpdateOneMetric(metric, false)
+		err := ms.UpdateOneMetric(c, metric, false)
 		if err != nil {
 			continue
 		}
