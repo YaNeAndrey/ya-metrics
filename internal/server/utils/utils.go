@@ -9,8 +9,6 @@ import (
 	"github.com/Rican7/retry/strategy"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage/storagejson"
-	"github.com/jackc/pgerrcode"
-	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"strings"
@@ -101,30 +99,37 @@ func TryToOpenDBConnection(dbConnectionString string) (*sql.DB, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	var bufError error
+	//var bufError error
 	err = retry.Retry(
+
 		func(attempt uint) error {
-			err = db.PingContext(ctx)
-			if err != nil {
-				if pgerrcode.IsConnectionException(err.Error()) {
-					bufError = nil
-					return err
-				}
-				if err, ok := err.(*pq.Error); ok {
-					if err.Code == pgerrcode.UniqueViolation {
+			if err = db.PingContext(ctx); err != nil {
+				return err
+			}
+
+			/*
+				err = db.PingContext(ctx)
+				if err != nil {
+					if pgerrcode.IsConnectionException(err.Error()) {
 						bufError = nil
 						return err
 					}
+					if err, ok := err.(*pq.Error); ok {
+						if err.Code == pgerrcode.UniqueViolation {
+							bufError = nil
+							return err
+						}
+					}
+					bufError = err
 				}
-				bufError = err
-			}
+			*/
 			return nil
 		},
 		strategy.Limit(4),
 		strategy.Backoff(backoff.Incremental(-1*time.Second, 2*time.Second)),
 	)
 
-	if bufError != nil {
+	if err != nil {
 		_ = db.Close()
 		return nil, err
 	}
