@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/handlers"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage/storagejson"
@@ -37,10 +38,11 @@ func Test_collectNewMetrics(t *testing.T) {
 			},
 		},
 	}
+	myContext := context.TODO()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			collectNewMetrics(tt.args.st)
-			metrics, _ := (*tt.args.st).GetAllMetrics()
+			metrics, _ := (*tt.args.st).GetAllMetrics(myContext)
 			assert.Equal(t, 29, len(metrics))
 		})
 	}

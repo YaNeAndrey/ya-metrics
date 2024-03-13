@@ -1,6 +1,7 @@
 package storagejson
 
 import (
+	"context"
 	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 	"reflect"
@@ -49,12 +50,13 @@ func TestMemStorageJSON_GetAllMetrics(t *testing.T) {
 			},
 		},
 	}
+	myContext := context.TODO()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ms := &MemStorageJSON{
 				allMetrics: tt.fields.allMetrics,
 			}
-			metrics, _ := ms.GetAllMetrics()
+			metrics, _ := ms.GetAllMetrics(myContext)
 			if !reflect.DeepEqual(metrics, tt.want) {
 				t.Errorf("GetAllMetrics() = %v, want %v", metrics, tt.want)
 			}
@@ -79,12 +81,14 @@ func TestMemStorageJSON_GetMetricByNameAndType(t *testing.T) {
 	}{
 		// TODO: Add test cases.
 	}
+
+	myContext := context.TODO()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ms := &MemStorageJSON{
 				allMetrics: tt.fields.allMetrics,
 			}
-			got, err := ms.GetMetricByNameAndType(tt.args.metricName, tt.args.metricType)
+			got, err := ms.GetMetricByNameAndType(myContext, tt.args.metricName, tt.args.metricType)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetMetricByNameAndType() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -112,12 +116,13 @@ func TestMemStorageJSON_UpdateMetric(t *testing.T) {
 	}{
 		// TODO: Add test cases.
 	}
+	myContext := context.TODO()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ms := &MemStorageJSON{
 				allMetrics: tt.fields.allMetrics,
 			}
-			if err := ms.UpdateOneMetric(tt.args.newMetric, tt.args.setCounterDelta); (err != nil) != tt.wantErr {
+			if err := ms.UpdateOneMetric(myContext, tt.args.newMetric, tt.args.setCounterDelta); (err != nil) != tt.wantErr {
 				t.Errorf("UpdateMetric() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
