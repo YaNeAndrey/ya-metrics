@@ -33,7 +33,7 @@ func TestHandleGetPing(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			//HandleGetPing(tt.args.c, tt.args.w, tt.args.in2)
+			//HandleGetPing( tt.args.w, tt.args.in2,tt.args.c)
 		})
 	}
 }

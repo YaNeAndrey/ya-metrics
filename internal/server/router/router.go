@@ -32,7 +32,7 @@ func InitRouter(c config.Config, st *storage.StorageRepo) http.Handler {
 		})
 
 		r.Get("/ping", func(rw http.ResponseWriter, req *http.Request) {
-			handlers.HandleGetPing(c, rw, req)
+			handlers.HandleGetPing(rw, req, c)
 		})
 
 		r.Route("/value", func(r chi.Router) {

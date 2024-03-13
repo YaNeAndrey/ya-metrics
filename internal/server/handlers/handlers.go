@@ -64,7 +64,7 @@ func HandleGetReadMetrics(w http.ResponseWriter, _ *http.Request, st *storage.St
 	w.WriteHeader(http.StatusOK)
 }
 
-func HandleGetPing(c config.Config, w http.ResponseWriter, _ *http.Request) {
+func HandleGetPing(w http.ResponseWriter, _ *http.Request, c config.Config) {
 	db, err := utils.TryToOpenDBConnection(c.DBConnectionString())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
