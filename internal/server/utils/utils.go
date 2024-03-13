@@ -9,6 +9,8 @@ import (
 	"github.com/Rican7/retry/strategy"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage/storagejson"
+	"github.com/jackc/pgerrcode"
+	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"strings"
@@ -99,11 +101,20 @@ func TryToOpenDBConnection(dbConnectionString string) (*sql.DB, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
+	var bufError error
 	err = retry.Retry(
 		func(attempt uint) error {
-			if err = db.PingContext(ctx); err != nil {
-				return err
+			err = db.PingContext(ctx)
+			if err != nil {
+				if pgerrcode.IsConnectionException(err.Error()) {
+					return err
+				}
+				if err, ok := err.(*pq.Error); ok {
+					if err.Code == pgerrcode.UniqueViolation {
+						return err
+					}
+				}
+				bufError = err
 			}
 			return nil
 		},
@@ -111,7 +122,7 @@ func TryToOpenDBConnection(dbConnectionString string) (*sql.DB, error) {
 		strategy.Backoff(backoff.Incremental(-1*time.Second, 2*time.Second)),
 	)
 
-	if err != nil {
+	if bufError != nil {
 		_ = db.Close()
 		return nil, err
 	}
