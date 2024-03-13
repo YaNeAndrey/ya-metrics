@@ -207,37 +207,6 @@ func HandlePostUpdateMultipleMetricsJSON(w http.ResponseWriter, r *http.Request,
 	w.WriteHeader(http.StatusOK)
 }
 
-func HandlePostMetricValueJSON(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
-	if r.Header.Get("Content-Type") != "application/json" {
-		http.Error(w, "Incorrect Content-Type. application/json required", http.StatusBadRequest)
-	}
-
-	var newMetric storage.Metrics
-	err := json.NewDecoder(r.Body).Decode(&newMetric)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	myContext := context.TODO()
-	metricInStorage, err := (*st).GetMetricByNameAndType(myContext, newMetric.ID, newMetric.MType)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
-	body, err := json.Marshal(metricInStorage)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	_, err = w.Write(body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
 func updateMetric(metricType string, metricName string, metricValueStr string, st *storage.StorageRepo) int {
 	newMetric := storage.Metrics{
 		ID:    metricName,

@@ -18,21 +18,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func AddURLParamsForChi(r *http.Request, urlParams map[string]string) *http.Request {
-	rctx := chi.NewRouteContext()
-	for key, value := range urlParams {
-		rctx.URLParams.Add(key, value)
-	}
-	r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
-	return r
-}
-
-// -
-func TestHandleGetRoot(t *testing.T) {
+// mock?
+func TestHandleGetPing(t *testing.T) {
 	type args struct {
-		w  http.ResponseWriter
-		r  *http.Request
-		st *storage.StorageRepo
+		//c   config.Config
+		w   http.ResponseWriter
+		in2 *http.Request
 	}
 	tests := []struct {
 		name string
@@ -42,13 +33,33 @@ func TestHandleGetRoot(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			HandleGetReadMetrics(tt.args.w, tt.args.r, tt.args.st)
+			//HandleGetPing(tt.args.c, tt.args.w, tt.args.in2)
 		})
 	}
 }
 
-// ++++
-func TestHandleGetMetricValue(t *testing.T) {
+// html root
+func TestHandleGetReadMetrics(t *testing.T) {
+	type args struct {
+		w   http.ResponseWriter
+		in1 *http.Request
+		st  *storage.StorageRepo
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			HandleGetReadMetrics(tt.args.w, tt.args.in1, tt.args.st)
+		})
+	}
+}
+
+// +++
+func TestHandleGetReadOneMetric(t *testing.T) {
 	floatValue := float64(124.2345)
 	intValue := int64(124)
 
@@ -143,8 +154,8 @@ func TestHandleGetMetricValue(t *testing.T) {
 	}
 }
 
-// ++++
-func TestHandlePostMetricValueJSON(t *testing.T) {
+// +++
+func TestHandlePostReadOneMetricJSON(t *testing.T) {
 	floatValue := float64(124.2345)
 	intValue := int64(124)
 	testMetrics := []storage.Metrics{
@@ -222,7 +233,7 @@ func TestHandlePostMetricValueJSON(t *testing.T) {
 			})
 			r.Route("/value", func(r chi.Router) {
 				r.Post("/", func(rw http.ResponseWriter, r *http.Request) {
-					HandlePostMetricValueJSON(rw, tt.args.req, tt.args.st)
+					HandlePostReadOneMetricJSON(rw, tt.args.req, tt.args.st)
 				})
 			})
 
@@ -243,8 +254,8 @@ func TestHandlePostMetricValueJSON(t *testing.T) {
 	}
 }
 
-// ++++
-func TestHandlePostUpdateMetricValue(t *testing.T) {
+// +++
+func TestHandlePostUpdateOneMetric(t *testing.T) {
 	testStorage := storage.StorageRepo(storagejson.NewMemStorageJSON([]storage.Metrics{}))
 
 	type args struct {
@@ -294,8 +305,8 @@ func TestHandlePostUpdateMetricValue(t *testing.T) {
 	}
 }
 
-// ++++
-func TestHandlePostUpdateMetricValueJSON(t *testing.T) {
+// +++
+func TestHandlePostUpdateOneMetricJSON(t *testing.T) {
 	testStorage := storage.StorageRepo(storagejson.NewMemStorageJSON([]storage.Metrics{}))
 	floatValue := float64(123.45)
 	correctMetric, _ := json.Marshal(storage.Metrics{ID: "gaugeMetric", MType: constants.GaugeMetricType, Value: &floatValue})
@@ -348,6 +359,72 @@ func TestHandlePostUpdateMetricValueJSON(t *testing.T) {
 	}
 }
 
+// +++
+func TestHandlePostUpdateMultipleMetricsJSON(t *testing.T) {
+	testStorage := storage.StorageRepo(storagejson.NewMemStorageJSON([]storage.Metrics{}))
+	floatArray := []float64{123.456, 456.789, 12, 0}
+	intArray := []int64{1, 22, 23}
+
+	correctMetrics := []storage.Metrics{
+		{
+			ID:    "FirstGauge",
+			MType: "gauge",
+			Value: &floatArray[0],
+		},
+		{
+			ID:    "FirstCounter",
+			MType: "counter",
+			Delta: &intArray[0],
+		},
+	}
+	correctMetricsJSON, _ := json.Marshal(correctMetrics)
+
+	type args struct {
+		w   http.ResponseWriter
+		req *http.Request
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			name: "Second test. Trying to update metrics with incorrect JSON",
+			args: args{
+				req: httptest.NewRequest(http.MethodPost, "/updates/", bytes.NewReader([]byte("incorrectJSON"))),
+			},
+			want: http.StatusBadRequest,
+		},
+		{
+			name: "First test. Update metrics",
+			args: args{
+				req: httptest.NewRequest(http.MethodPost, "/updates/", bytes.NewReader(correctMetricsJSON)),
+			},
+			want: http.StatusOK,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			r := chi.NewRouter()
+
+			r.Route("/updates", func(r chi.Router) {
+				r.Post("/", func(rw http.ResponseWriter, r *http.Request) {
+					HandlePostUpdateMultipleMetricsJSON(rw, r, &testStorage)
+				})
+			})
+			tt.args.req.Header.Add("Content-Type", "application/json")
+
+			r.ServeHTTP(w, tt.args.req)
+
+			result := w.Result()
+			defer result.Body.Close()
+			assert.Equal(t, tt.want, result.StatusCode)
+		})
+	}
+}
+
 func Test_updateMetric(t *testing.T) {
 	type args struct {
 		metricType     string
@@ -369,4 +446,13 @@ func Test_updateMetric(t *testing.T) {
 			}
 		})
 	}
+}
+
+func AddURLParamsForChi(r *http.Request, urlParams map[string]string) *http.Request {
+	rctx := chi.NewRouteContext()
+	for key, value := range urlParams {
+		rctx.URLParams.Add(key, value)
+	}
+	r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
+	return r
 }

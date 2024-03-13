@@ -98,8 +98,8 @@ func (c *Config) RestoreMetrics() bool {
 
 func (c *Config) String() string {
 	if c.dbConnectionString != "" {
-		return fmt.Sprintf("Config { EndPoint: %s:%d; Store interval: %s; DB connection string: %s } ", c.SrvAddr(), c.SrvPort(), c.StoreInterval(), c.DBConnectionString())
+		return fmt.Sprintf("Server config: { EndPoint: %s:%d; Store interval: %s; DB connection string: %s} ", c.SrvAddr(), c.SrvPort(), c.StoreInterval(), c.DBConnectionString())
 
 	}
-	return fmt.Sprintf("Config { EndPoint: %s:%d; Store interval: %s; File storage: %s; } ", c.SrvAddr(), c.SrvPort(), c.StoreInterval(), c.FileStoragePath())
+	return fmt.Sprintf("Server config: { EndPoint: %s:%d; Store interval: %s; File storage: %s;} ", c.SrvAddr(), c.SrvPort(), c.StoreInterval(), c.FileStoragePath())
 }

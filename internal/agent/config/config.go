@@ -85,5 +85,5 @@ func (c *Config) GetHostnameWithScheme() string {
 }
 
 func (c *Config) String() string {
-	return fmt.Sprintf("Config { Server: %s://%s:%d; Poll interval: %s; Report interval: %s } ", c.Scheme(), c.SrvAddr(), c.SrvPort(), c.PollInterval(), c.ReportInterval())
+	return fmt.Sprintf("Agent config: { Server: %s://%s:%d; Poll interval: %s; Report interval: %s} ", c.Scheme(), c.SrvAddr(), c.SrvPort(), c.PollInterval(), c.ReportInterval())
 }
