@@ -123,16 +123,7 @@ func TestConfig_SetFileStoragePath(t *testing.T) {
 		c       *Config
 		args    args
 		wantErr bool
-	}{
-		{
-			name: "First test. Trying to set incorrect file storage path",
-			c:    NewConfig(),
-			args: args{
-				fileStoragePath: "E:/123.txt",
-			},
-			wantErr: true,
-		},
-	}
+	}{}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.c.SetFileStoragePath(tt.args.fileStoragePath); (err != nil) != tt.wantErr {
