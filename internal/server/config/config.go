@@ -2,19 +2,20 @@ package config
 
 import (
 	"errors"
-	"log"
-	"os"
+	"fmt"
 	"path"
-	"strings"
 	"time"
+
+	"github.com/YaNeAndrey/ya-metrics/internal/server/utils"
 )
 
 type Config struct {
-	srvAddr         string
-	srvPort         int
-	storeInterval   time.Duration
-	fileStoragePath string
-	restoreMetrics  bool
+	srvAddr            string
+	srvPort            int
+	storeInterval      time.Duration
+	fileStoragePath    string
+	dbConnectionString string
+	restoreMetrics     bool
 }
 
 func NewConfig() *Config {
@@ -23,6 +24,7 @@ func NewConfig() *Config {
 	c.srvPort = 8080
 	c.storeInterval = time.Duration(300) * time.Second
 	c.fileStoragePath = path.Join("tmp", "metrics-db.json")
+	c.dbConnectionString = ""
 	c.restoreMetrics = true
 	return &c
 }
@@ -48,11 +50,21 @@ func (c *Config) SetStoreInterval(storeInterval int) error {
 }
 
 func (c *Config) SetFileStoragePath(fileStoragePath string) error {
-	err := CheckAndCreateFile(fileStoragePath)
+	err := utils.CheckAndCreateFile(fileStoragePath)
 	if err != nil {
 		return err
 	}
 	c.fileStoragePath = fileStoragePath
+	return nil
+}
+
+func (c *Config) SetDBConnectionString(dbConnectionString string) error {
+	db, err := utils.TryToOpenDBConnection(dbConnectionString)
+	if err != nil {
+		return err
+	}
+	db.Close()
+	c.dbConnectionString = dbConnectionString
 	return nil
 }
 
@@ -76,29 +88,18 @@ func (c *Config) FileStoragePath() string {
 	return c.fileStoragePath
 }
 
+func (c *Config) DBConnectionString() string {
+	return c.dbConnectionString
+}
+
 func (c *Config) RestoreMetrics() bool {
 	return c.restoreMetrics
 }
 
-func CheckAndCreateFile(filePath string) error {
-	_, err := os.Stat(filePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			log.Println(filePath)
-			separatedPath := strings.Split(filePath, string(os.PathSeparator))
-			log.Println(separatedPath)
-			dirPath := strings.Join(separatedPath[0:len(separatedPath)-1], string(os.PathSeparator))
-			err = os.MkdirAll(dirPath, 0666)
-			if err != nil {
-				return err
-			}
-			_, err := os.Create(filePath)
-			if err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
+func (c *Config) String() string {
+	if c.dbConnectionString != "" {
+		return fmt.Sprintf("Server config: { EndPoint: %s:%d; Store interval: %s; DB connection string: %s} ", c.SrvAddr(), c.SrvPort(), c.StoreInterval(), c.DBConnectionString())
+
 	}
-	return nil
+	return fmt.Sprintf("Server config: { EndPoint: %s:%d; Store interval: %s; File storage: %s;} ", c.SrvAddr(), c.SrvPort(), c.StoreInterval(), c.FileStoragePath())
 }

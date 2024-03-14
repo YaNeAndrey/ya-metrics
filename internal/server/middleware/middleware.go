@@ -4,7 +4,7 @@ import (
 	"github.com/YaNeAndrey/ya-metrics/internal/server/utils"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"slices"
 	"strings"
@@ -14,13 +14,13 @@ import (
 	"github.com/YaNeAndrey/ya-metrics/internal/server/gzip"
 )
 
-func MyLoggerMiddleware(logger logrus.FieldLogger) func(h http.Handler) http.Handler {
+func MyLoggerMiddleware(logger log.FieldLogger) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 			timeStart := time.Now()
 			defer func() {
-				fields := logrus.Fields{
+				fields := log.Fields{
 					//request fields
 					"URI":      r.RequestURI,
 					"method":   r.Method,
@@ -76,7 +76,7 @@ func SyncUpdateAndFileStorageMiddleware(c config.Config, st *storage.StorageRepo
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			h.ServeHTTP(w, r)
 
-			err := utils.SaveAllMetricsToFile(c, st)
+			err := utils.SaveAllMetricsToFile(c.FileStoragePath(), st)
 			if err != nil {
 				return
 			}

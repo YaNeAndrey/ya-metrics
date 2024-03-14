@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"flag"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"strconv"
 	"strings"
@@ -29,6 +29,7 @@ func parseFlags() *config.Config {
 	srvEndpoit := flag.String("a", "localhost:8080", "Server endpoint address server:port")
 	storeInterval := flag.Uint("i", 300, "Store Interval in seconds")
 	fileStoragePath := flag.String("f", ".\\tmp\\metrics-db.json", "File storage path (.json)")
+	dbConnectionString := flag.String("d", "", "dbConnectionString in Postgres format: postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]")
 	restoreMetrics := flag.Bool("r", true, "Restore old metrics? (true or false)")
 	flag.Parse()
 
@@ -65,17 +66,20 @@ func parseFlags() *config.Config {
 		}
 	}
 
-	restoreMetricsEnv, isExist := os.LookupEnv("FILE_STORAGE_PATH")
+	dbConnectionStringEnv, isExist := os.LookupEnv("DATABASE_DSN")
 	if isExist {
-		restoreMetricsBool, err := strconv.ParseBool(restoreMetricsEnv)
-		if err == nil {
-			conf.SetRestoreMetrics(restoreMetricsBool)
+		err := conf.SetDBConnectionString(dbConnectionStringEnv)
+		if err != nil {
+			log.Println(err)
 		}
 	} else {
-		conf.SetRestoreMetrics(*restoreMetrics)
+		err := conf.SetDBConnectionString(*dbConnectionString)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 
-	fileStoragePathEnv, isExist := os.LookupEnv("RESTORE")
+	fileStoragePathEnv, isExist := os.LookupEnv("FILE_STORAGE_PATH")
 	if isExist {
 		err := conf.SetFileStoragePath(fileStoragePathEnv)
 		if err != nil {
@@ -86,6 +90,16 @@ func parseFlags() *config.Config {
 		if err != nil {
 			log.Println(err)
 		}
+	}
+
+	restoreMetricsEnv, isExist := os.LookupEnv("RESTORE")
+	if isExist {
+		restoreMetricsBool, err := strconv.ParseBool(restoreMetricsEnv)
+		if err == nil {
+			conf.SetRestoreMetrics(restoreMetricsBool)
+		}
+	} else {
+		conf.SetRestoreMetrics(*restoreMetrics)
 	}
 
 	return conf

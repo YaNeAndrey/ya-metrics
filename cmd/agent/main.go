@@ -3,19 +3,17 @@ package main
 import (
 	"github.com/YaNeAndrey/ya-metrics/internal/agent/utils"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
-	"log"
+	"github.com/YaNeAndrey/ya-metrics/internal/storage/storagejson"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
+	log.SetReportCaller(true)
 	testMetrics := []storage.Metrics{}
 
-	st := storage.StorageRepo(storage.NewMemStorageJSON(testMetrics))
+	st := storage.StorageRepo(storagejson.NewMemStorageJSON(testMetrics))
 
-	cnfg := parseFlags()
-	log.Println(cnfg.Scheme())
-	log.Println(cnfg.SrvAddr())
-	log.Println(cnfg.SrvPort())
-	log.Println(cnfg.PollInterval())
-	log.Println(cnfg.ReportInterval())
-	utils.StartMetricsMonitor(&st, cnfg)
+	conf := parseFlags()
+	log.Printf((*conf).String())
+	utils.StartMetricsMonitor(&st, conf)
 }

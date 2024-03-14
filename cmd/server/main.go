@@ -2,52 +2,46 @@ package main
 
 import (
 	"fmt"
-	"github.com/YaNeAndrey/ya-metrics/internal/server/config"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/router"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/utils"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
-	"log"
+	"github.com/YaNeAndrey/ya-metrics/internal/storage/storagedb"
+	"github.com/YaNeAndrey/ya-metrics/internal/storage/storagejson"
+	log "github.com/sirupsen/logrus"
+
 	"net/http"
 )
 
 func main() {
+	log.SetReportCaller(true)
+
 	conf := parseFlags()
-	//floatNum := 6.142434
-	//intNum := int64(123456)
 	testMetrics := []storage.Metrics{}
 
-	log.Println(*conf)
-	st := storage.StorageRepo(storage.NewMemStorageJSON(testMetrics))
-
-	err := utils.ReadMetricsFromFile(*conf, &st)
-
-	if err != nil {
-		log.Println("From main: " + err.Error())
-	}
-	r := router.InitRouter(*conf, &st)
-
-	//Send Ctrl+C for good exit
-	/*c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		err := utils.SaveAllMetricsToFile(*conf, &st)
+	var st storage.StorageRepo
+	var err error
+	if conf.DBConnectionString() != "" {
+		st, err = storagedb.InitStorageDB(conf.DBConnectionString())
 		if err != nil {
-			os.Exit(1)
+			log.Println(err)
 		}
-		os.Exit(0)
-	}()
-	*/
-	err = config.CheckAndCreateFile(conf.FileStoragePath())
-
-	if err != nil {
-		log.Println("From main: " + err.Error())
 	}
 
-	go utils.SaveMetricsByTime(*conf, &st)
+	if st == nil {
+		st = storage.StorageRepo(storagejson.NewMemStorageJSON(testMetrics))
 
-	defer utils.SaveAllMetricsToFile(*conf, &st)
+		err = utils.ReadMetricsFromFile(conf.FileStoragePath(), &st)
+		if err != nil {
+			log.Println(err.Error())
+		}
 
+		if conf.StoreInterval() != 0 {
+			go utils.SaveMetricsByTime(conf.FileStoragePath(), conf.StoreInterval(), &st)
+		}
+		defer utils.SaveAllMetricsToFile(conf.FileStoragePath(), &st)
+	}
+	log.Printf(conf.String())
+	r := router.InitRouter(*conf, &st)
 	err = http.ListenAndServe(fmt.Sprintf("%s:%d", conf.SrvAddr(), conf.SrvPort()), r)
 	if err != nil {
 		panic(err)

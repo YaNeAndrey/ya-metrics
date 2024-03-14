@@ -1,17 +1,18 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/YaNeAndrey/ya-metrics/internal/constants"
+	"github.com/YaNeAndrey/ya-metrics/internal/server/config"
+	"github.com/YaNeAndrey/ya-metrics/internal/server/utils"
+	"github.com/YaNeAndrey/ya-metrics/internal/storage"
+	"github.com/go-chi/chi/v5"
 	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
-
-	"github.com/YaNeAndrey/ya-metrics/internal/constants"
-	"github.com/YaNeAndrey/ya-metrics/internal/storage"
-
-	"github.com/go-chi/chi/v5"
 )
 
 const tplStr = `<table>
@@ -31,11 +32,16 @@ const tplStr = `<table>
     </tbody>
 </table>`
 
-func HandleGetRoot(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
+func HandleGetReadMetrics(w http.ResponseWriter, _ *http.Request, st *storage.StorageRepo) {
 	bufMetricMap := make(map[string]string)
 	w.Header().Set("Content-Type", "text/html")
-	//w.Header().Set("Content-Encoding", "gzip")
-	for _, metr := range (*st).GetAllMetrics() {
+	myContext := context.TODO()
+	metrics, err := (*st).GetAllMetrics(myContext)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	for _, metr := range metrics {
 		if metr.MType == constants.GaugeMetricType {
 			bufMetricMap[metr.ID] = fmt.Sprintf("%v", *metr.Value)
 		} else {
@@ -58,13 +64,24 @@ func HandleGetRoot(w http.ResponseWriter, r *http.Request, st *storage.StorageRe
 	w.WriteHeader(http.StatusOK)
 }
 
-func HandleGetMetricValue(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
+func HandleGetPing(w http.ResponseWriter, _ *http.Request, c config.Config) {
+	db, err := utils.TryToOpenDBConnection(c.DBConnectionString())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	db.Close()
+	w.WriteHeader(http.StatusOK)
+}
+
+func HandleGetReadOneMetric(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
 	metricType := strings.ToLower(chi.URLParam(r, "type"))
 	metricName := chi.URLParam(r, "name")
 
 	body := ""
 
-	metricInStorage, err := (*st).GetMetricByNameAndType(metricName, metricType)
+	myContext := context.TODO()
+	metricInStorage, err := (*st).GetMetricByNameAndType(myContext, metricName, metricType)
 	if err != nil {
 		//http.Error(w, err.Error(), http.StatusNotFound)
 		w.WriteHeader(http.StatusNotFound)
@@ -87,7 +104,7 @@ func HandleGetMetricValue(w http.ResponseWriter, r *http.Request, st *storage.St
 	w.WriteHeader(http.StatusOK)
 }
 
-func HandlePostMetricValueJSON(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
+func HandlePostReadOneMetricJSON(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
 	if r.Header.Get("Content-Type") != "application/json" {
 		http.Error(w, "Incorrect Content-Type. application/json required", http.StatusBadRequest)
 	}
@@ -98,7 +115,8 @@ func HandlePostMetricValueJSON(w http.ResponseWriter, r *http.Request, st *stora
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	metricInStorage, err := (*st).GetMetricByNameAndType(newMetric.ID, newMetric.MType)
+	myContext := context.TODO()
+	metricInStorage, err := (*st).GetMetricByNameAndType(myContext, newMetric.ID, newMetric.MType)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -117,7 +135,7 @@ func HandlePostMetricValueJSON(w http.ResponseWriter, r *http.Request, st *stora
 	}
 }
 
-func HandlePostUpdateMetricValue(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
+func HandlePostUpdateOneMetric(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
 	metricType := strings.ToLower(chi.URLParam(r, "type"))
 	metricName := chi.URLParam(r, "name")
 	metricValueStr := chi.URLParam(r, "value")
@@ -130,7 +148,7 @@ func HandlePostUpdateMetricValue(w http.ResponseWriter, r *http.Request, st *sto
 	w.WriteHeader(statusCode)
 }
 
-func HandlePostUpdateMetricValueJSON(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
+func HandlePostUpdateOneMetricJSON(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
 	if r.Header.Get("Content-Type") != "application/json" {
 		http.Error(w, "Incorrect Content-Type. application/json required", http.StatusBadRequest)
 	}
@@ -141,7 +159,8 @@ func HandlePostUpdateMetricValueJSON(w http.ResponseWriter, r *http.Request, st 
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = (*st).UpdateMetric(newMetric, false)
+	myContext := context.TODO()
+	err = (*st).UpdateOneMetric(myContext, newMetric, false)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -158,6 +177,33 @@ func HandlePostUpdateMetricValueJSON(w http.ResponseWriter, r *http.Request, st 
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func HandlePostUpdateMultipleMetricsJSON(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "Incorrect Content-Type. application/json required", http.StatusBadRequest)
+	}
+
+	var newMetrics []storage.Metrics
+
+	err := json.NewDecoder(r.Body).Decode(&newMetrics)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if len(newMetrics) == 0 {
+		http.Error(w, "array cannot be empty", http.StatusBadRequest)
+		return
+	}
+	myContext := context.TODO()
+	err = (*st).UpdateMultipleMetrics(myContext, newMetrics)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -192,7 +238,8 @@ func updateMetric(metricType string, metricName string, metricValueStr string, s
 	default:
 		return http.StatusBadRequest
 	}
-	err = (*st).UpdateMetric(newMetric, false)
+	myContext := context.TODO()
+	err = (*st).UpdateOneMetric(myContext, newMetric, false)
 	if err != nil {
 		return http.StatusInternalServerError
 	}

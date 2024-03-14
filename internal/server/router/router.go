@@ -8,7 +8,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 func InitRouter(c config.Config, st *storage.StorageRepo) http.Handler {
@@ -17,23 +17,30 @@ func InitRouter(c config.Config, st *storage.StorageRepo) http.Handler {
 		rw.WriteHeader(http.StatusNotFound)
 	})
 
-	log := logrus.New()
-	log.SetLevel(logrus.InfoLevel)
-	r.Use(middleware.MyLoggerMiddleware(log))
+	logger := log.New()
+	logger.SetLevel(log.InfoLevel)
+	r.Use(middleware.MyLoggerMiddleware(logger))
 	r.Use(middleware.GzipMiddleware())
 
 	r.Route("/", func(r chi.Router) {
-		r.Get("/", func(rw http.ResponseWriter, req *http.Request) {
+		r.Post("/updates/", func(rw http.ResponseWriter, req *http.Request) {
+			handlers.HandlePostUpdateMultipleMetricsJSON(rw, req, st)
+		})
 
-			handlers.HandleGetRoot(rw, req, st)
+		r.Get("/", func(rw http.ResponseWriter, req *http.Request) {
+			handlers.HandleGetReadMetrics(rw, req, st)
+		})
+
+		r.Get("/ping", func(rw http.ResponseWriter, req *http.Request) {
+			handlers.HandleGetPing(rw, req, c)
 		})
 
 		r.Route("/value", func(r chi.Router) {
-			r.Post("/", func(rw http.ResponseWriter, r *http.Request) {
-				handlers.HandlePostMetricValueJSON(rw, r, st)
+			r.Post("/", func(rw http.ResponseWriter, req *http.Request) {
+				handlers.HandlePostReadOneMetricJSON(rw, req, st)
 			})
-			r.Get("/{type}/{name}", func(rw http.ResponseWriter, r *http.Request) {
-				handlers.HandleGetMetricValue(rw, r, st)
+			r.Get("/{type}/{name}", func(rw http.ResponseWriter, req *http.Request) {
+				handlers.HandleGetReadOneMetric(rw, req, st)
 			})
 		})
 
@@ -41,12 +48,11 @@ func InitRouter(c config.Config, st *storage.StorageRepo) http.Handler {
 			if c.StoreInterval() == 0 {
 				r.Use(middleware.SyncUpdateAndFileStorageMiddleware(c, st))
 			}
-
-			r.Post("/", func(rw http.ResponseWriter, r *http.Request) {
-				handlers.HandlePostUpdateMetricValueJSON(rw, r, st)
+			r.Post("/", func(rw http.ResponseWriter, req *http.Request) {
+				handlers.HandlePostUpdateOneMetricJSON(rw, req, st)
 			})
-			r.Post("/{type}/{name}/{value}", func(rw http.ResponseWriter, r *http.Request) {
-				handlers.HandlePostUpdateMetricValue(rw, r, st)
+			r.Post("/{type}/{name}/{value}", func(rw http.ResponseWriter, req *http.Request) {
+				handlers.HandlePostUpdateOneMetric(rw, req, st)
 			})
 		})
 	})
