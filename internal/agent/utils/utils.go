@@ -123,8 +123,11 @@ func sendOneMetricUpdate(c *config.Config, metric storage.Metrics, client *http.
 
 	bodyReader := bytes.NewReader(compressedDate)
 
-	//client := &http.Client{}
-	r, _ := http.NewRequest("POST", urlStr, bodyReader)
+	r, err := http.NewRequest("POST", urlStr, bodyReader)
+	if err != nil {
+		return err
+	}
+
 	r.Header.Add("Content-Type", "application/json")
 	r.Header.Add("Content-Encoding", "gzip")
 

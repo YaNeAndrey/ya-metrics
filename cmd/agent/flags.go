@@ -1,8 +1,8 @@
 package main
 
 import (
-	"errors"
 	"flag"
+	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"strconv"
@@ -14,14 +14,14 @@ import (
 func parseEndpoint(endpointStr string) (string, int, error) {
 	hp := strings.Split(endpointStr, ":")
 	if len(hp) != 2 {
-		return "", 0, errors.New("need address in a form host:port")
+		return "", 0, constants.ErrIncorrectEndpointFormat
 	}
 	port, err := strconv.Atoi(hp[1])
 	if err != nil {
 		return "", 0, err
 	}
 	if port < 1 || port > 65535 {
-		return "", 0, errors.New("port accepts values from the range [1:65535]")
+		return "", 0, constants.ErrIncorrectPortNumber
 	}
 	return hp[0], port, nil
 }

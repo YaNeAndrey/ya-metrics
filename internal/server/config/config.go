@@ -1,8 +1,8 @@
 package config
 
 import (
-	"errors"
 	"fmt"
+	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	"path"
 	"time"
 
@@ -38,7 +38,7 @@ func (c *Config) SetSrvPort(srvPort int) error {
 		c.srvPort = srvPort
 		return nil
 	}
-	return errors.New("SrvPort must be in [1:65535]")
+	return constants.ErrIncorrectPortNumber
 }
 
 func (c *Config) SetStoreInterval(storeInterval int) error {
@@ -46,7 +46,7 @@ func (c *Config) SetStoreInterval(storeInterval int) error {
 		c.storeInterval = time.Duration(storeInterval) * time.Second
 		return nil
 	}
-	return errors.New("StoreInterval must be greater then -1")
+	return constants.ErrIncorrectStoreInterval
 }
 
 func (c *Config) SetFileStoragePath(fileStoragePath string) error {

@@ -1,8 +1,8 @@
 package config
 
 import (
-	"errors"
 	"fmt"
+	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	"time"
 )
 
@@ -61,7 +61,7 @@ func (c *Config) SetSrvPort(srvPort int) error {
 		c.srvPort = srvPort
 		return nil
 	}
-	return errors.New("SrvPort must be in [1:65535]")
+	return constants.ErrIncorrectPortNumber
 }
 
 func (c *Config) SetPollInterval(pollInterval int) error {
@@ -69,7 +69,7 @@ func (c *Config) SetPollInterval(pollInterval int) error {
 		c.pollInterval = time.Duration(pollInterval) * time.Second
 		return nil
 	}
-	return errors.New("pollInterval must be greater than 0")
+	return constants.ErrIncorrectPollInterval
 }
 
 func (c *Config) SetReportInterval(reportInterval int) error {
@@ -77,7 +77,7 @@ func (c *Config) SetReportInterval(reportInterval int) error {
 		c.reportInterval = time.Duration(reportInterval) * time.Second
 		return nil
 	}
-	return errors.New("reportInterval must be greater than 0")
+	return constants.ErrIncorrectReportInterval
 }
 
 func (c *Config) GetHostnameWithScheme() string {
