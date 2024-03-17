@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	"path"
 	"reflect"
 	"testing"
@@ -165,11 +166,11 @@ func TestConfig_SetSrvPort(t *testing.T) {
 		srvPort int
 	}
 	tests := []struct {
-		name             string
-		c                *Config
-		args             args
-		wantErr          bool
-		expectedErrorMsg string
+		name          string
+		c             *Config
+		args          args
+		wantErr       bool
+		expectedError error
 	}{
 		{
 			name: "First test. Set server port",
@@ -185,15 +186,15 @@ func TestConfig_SetSrvPort(t *testing.T) {
 			args: args{
 				srvPort: -1,
 			},
-			wantErr:          true,
-			expectedErrorMsg: "SrvPort must be in [1:65535]",
+			wantErr:       true,
+			expectedError: constants.ErrIncorrectPortNumber,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.c.SetSrvPort(tt.args.srvPort)
 			if tt.wantErr {
-				assert.EqualErrorf(t, err, tt.expectedErrorMsg, "Error should be: %v, got: %v", tt.expectedErrorMsg, err)
+				assert.Equal(t, err, tt.expectedError, "Error should be: %v, got: %v", tt.expectedError, err)
 			} else {
 				assert.Equal(t, tt.args.srvPort, tt.c.srvPort)
 			}

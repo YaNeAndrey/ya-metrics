@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	"reflect"
 	"testing"
 	"time"
@@ -16,11 +17,11 @@ func TestNewConfig(t *testing.T) {
 		{
 			name: "First test. Create client config",
 			want: &Config{
-				enableTLS: false,
-				srvAddr: "localhost",
-				srvPort: 8080,
-				pollInterval: time.Duration(2) * time.Second,
-				reportInterval: time.Duration(10)* time.Second,
+				enableTLS:      false,
+				srvAddr:        "localhost",
+				srvPort:        8080,
+				pollInterval:   time.Duration(2) * time.Second,
+				reportInterval: time.Duration(10) * time.Second,
 			},
 		},
 	}
@@ -41,7 +42,7 @@ func TestConfig_Scheme(t *testing.T) {
 	}{
 		{
 			name: "First test. Get Scheme",
-			c: NewConfig(),
+			c:    NewConfig(),
 			want: "http",
 		},
 	}
@@ -62,7 +63,7 @@ func TestConfig_SrvAddr(t *testing.T) {
 	}{
 		{
 			name: "First test. Get server hostname",
-			c: NewConfig(),
+			c:    NewConfig(),
 			want: "localhost",
 		},
 	}
@@ -83,7 +84,7 @@ func TestConfig_SrvPort(t *testing.T) {
 	}{
 		{
 			name: "First test. Get server port",
-			c: NewConfig(),
+			c:    NewConfig(),
 			want: 8080,
 		},
 	}
@@ -104,8 +105,8 @@ func TestConfig_PollInterval(t *testing.T) {
 	}{
 		{
 			name: "First test. Get pool interval",
-			c: NewConfig(),
-			want: time.Duration(2)* time.Second,
+			c:    NewConfig(),
+			want: time.Duration(2) * time.Second,
 		},
 	}
 	for _, tt := range tests {
@@ -125,8 +126,8 @@ func TestConfig_ReportInterval(t *testing.T) {
 	}{
 		{
 			name: "First test. Get report interval",
-			c: NewConfig(),
-			want: time.Duration(10)* time.Second,
+			c:    NewConfig(),
+			want: time.Duration(10) * time.Second,
 		},
 	}
 	for _, tt := range tests {
@@ -149,16 +150,16 @@ func TestConfig_SetTLS(t *testing.T) {
 	}{
 		{
 			name: "First test. Set TLS",
-			c: NewConfig(),
+			c:    NewConfig(),
 			args: args{
-				enableTLS: true,			
+				enableTLS: true,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.c.SetTLS(tt.args.enableTLS)
-			assert.Equal(t,tt.args.enableTLS,tt.c.enableTLS)
+			assert.Equal(t, tt.args.enableTLS, tt.c.enableTLS)
 		})
 	}
 }
@@ -174,7 +175,7 @@ func TestConfig_SetSrvAddr(t *testing.T) {
 	}{
 		{
 			name: "First test. Set hostname",
-			c: NewConfig(),
+			c:    NewConfig(),
 			args: args{
 				srvAddr: "1.1.1.1",
 			},
@@ -183,7 +184,7 @@ func TestConfig_SetSrvAddr(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.c.SetSrvAddr(tt.args.srvAddr)
-			assert.Equal(t,tt.args.srvAddr,tt.c.srvAddr)
+			assert.Equal(t, tt.args.srvAddr, tt.c.srvAddr)
 		})
 	}
 }
@@ -193,15 +194,15 @@ func TestConfig_SetSrvPort(t *testing.T) {
 		srvPort int
 	}
 	tests := []struct {
-		name    string
-		c       *Config
-		args    args
-		wantErr bool
-		expectedErrorMsg string
+		name          string
+		c             *Config
+		args          args
+		wantErr       bool
+		expectedError error
 	}{
 		{
 			name: "First test. Set server port",
-			c: NewConfig(),
+			c:    NewConfig(),
 			args: args{
 				srvPort: 80,
 			},
@@ -209,21 +210,21 @@ func TestConfig_SetSrvPort(t *testing.T) {
 		},
 		{
 			name: "Second test. Trying to set server port with incorrect value",
-			c: NewConfig(),
+			c:    NewConfig(),
 			args: args{
 				srvPort: -1,
 			},
-			wantErr: true,
-			expectedErrorMsg: "SrvPort must be in [1:65535]",
+			wantErr:       true,
+			expectedError: constants.ErrIncorrectPortNumber,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.c.SetSrvPort(tt.args.srvPort)
 			if tt.wantErr {
-				assert.EqualErrorf(t, err, tt.expectedErrorMsg, "Error should be: %v, got: %v", tt.expectedErrorMsg, err)
+				assert.Equal(t, err, tt.expectedError, "Error should be: %v, got: %v", tt.expectedError, err)
 			} else {
-				assert.Equal(t,tt.args.srvPort,tt.c.srvPort)
+				assert.Equal(t, tt.args.srvPort, tt.c.srvPort)
 			}
 		})
 	}
@@ -234,15 +235,15 @@ func TestConfig_SetPollInterval(t *testing.T) {
 		pollInterval int
 	}
 	tests := []struct {
-		name    string
-		c       *Config
-		args    args
-		wantErr bool
+		name             string
+		c                *Config
+		args             args
+		wantErr          bool
 		expectedErrorMsg string
 	}{
 		{
 			name: "First test. Set poll interval",
-			c: NewConfig(),
+			c:    NewConfig(),
 			args: args{
 				pollInterval: 10,
 			},
@@ -250,11 +251,11 @@ func TestConfig_SetPollInterval(t *testing.T) {
 		},
 		{
 			name: "Second test. Trying to set poll interval with incorrect value",
-			c: NewConfig(),
+			c:    NewConfig(),
 			args: args{
 				pollInterval: -10,
 			},
-			wantErr: true,
+			wantErr:          true,
 			expectedErrorMsg: "pollInterval must be greater than 0",
 		},
 	}
@@ -264,7 +265,7 @@ func TestConfig_SetPollInterval(t *testing.T) {
 			if tt.wantErr {
 				assert.EqualErrorf(t, err, tt.expectedErrorMsg, "Error should be: %v, got: %v", tt.expectedErrorMsg, err)
 			} else {
-				assert.Equal(t,time.Duration(tt.args.pollInterval)* time.Second,tt.c.pollInterval)
+				assert.Equal(t, time.Duration(tt.args.pollInterval)*time.Second, tt.c.pollInterval)
 			}
 		})
 	}
@@ -275,15 +276,15 @@ func TestConfig_SetReportInterval(t *testing.T) {
 		reportInterval int
 	}
 	tests := []struct {
-		name    string
-		c       *Config
-		args    args
-		wantErr bool
+		name             string
+		c                *Config
+		args             args
+		wantErr          bool
 		expectedErrorMsg string
 	}{
 		{
 			name: "First test. Set report interval",
-			c: NewConfig(),
+			c:    NewConfig(),
 			args: args{
 				reportInterval: 80,
 			},
@@ -291,21 +292,21 @@ func TestConfig_SetReportInterval(t *testing.T) {
 		},
 		{
 			name: "Second test. Trying to set report interval with incorrect value",
-			c: NewConfig(),
+			c:    NewConfig(),
 			args: args{
 				reportInterval: -1,
 			},
-			wantErr: true,
+			wantErr:          true,
 			expectedErrorMsg: "reportInterval must be greater than 0",
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {			
+		t.Run(tt.name, func(t *testing.T) {
 			err := tt.c.SetReportInterval(tt.args.reportInterval)
 			if tt.wantErr {
 				assert.EqualErrorf(t, err, tt.expectedErrorMsg, "Error should be: %v, got: %v", tt.expectedErrorMsg, err)
 			} else {
-				assert.Equal(t,time.Duration(tt.args.reportInterval)* time.Second,tt.c.reportInterval)
+				assert.Equal(t, time.Duration(tt.args.reportInterval)*time.Second, tt.c.reportInterval)
 			}
 		})
 	}
@@ -319,7 +320,7 @@ func TestConfig_GetHostnameWithScheme(t *testing.T) {
 	}{
 		{
 			name: "First test. Get hostaneme with scheme",
-			c: NewConfig(),
+			c:    NewConfig(),
 			want: "http://localhost:8080",
 		},
 	}
