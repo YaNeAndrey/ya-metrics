@@ -26,7 +26,7 @@ func (c *SigrerWriter) Header() http.Header {
 func (c *SigrerWriter) Write(p []byte) (int, error) {
 	hashSHA256 := generateSignature(c.key, p)
 	c.w.Header().Set("HashSHA256", base64.URLEncoding.EncodeToString(hashSHA256))
-	lenBuf, err := c.Write(p)
+	lenBuf, err := c.w.Write(p)
 
 	if err != nil {
 		return 0, err
