@@ -16,6 +16,7 @@ type Config struct {
 	fileStoragePath    string
 	dbConnectionString string
 	restoreMetrics     bool
+	encryptionKey      []byte
 }
 
 func NewConfig() *Config {
@@ -26,11 +27,19 @@ func NewConfig() *Config {
 	c.fileStoragePath = path.Join("tmp", "metrics-db.json")
 	c.dbConnectionString = ""
 	c.restoreMetrics = true
+	c.encryptionKey = nil
 	return &c
 }
 
 func (c *Config) SetSrvAddr(srvAddr string) {
 	c.srvAddr = srvAddr
+}
+
+func (c *Config) SetEncryptionKey(encryptionKey []byte) {
+	if len(encryptionKey) != 16 {
+		return
+	}
+	c.encryptionKey = encryptionKey
 }
 
 func (c *Config) SetSrvPort(srvPort int) error {
@@ -74,6 +83,10 @@ func (c *Config) SetRestoreMetrics(restoreMetrics bool) {
 
 func (c *Config) SrvAddr() string {
 	return c.srvAddr
+}
+
+func (c *Config) EncryptionKey() []byte {
+	return c.encryptionKey
 }
 
 func (c *Config) SrvPort() int {

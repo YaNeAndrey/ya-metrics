@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/Rican7/retry"
@@ -76,6 +79,11 @@ func sendAllMetricsInOneRequest(c *config.Config, metrics []storage.Metrics, cli
 	r.Header.Add("Content-Type", "application/json")
 	r.Header.Add("Content-Encoding", "gzip")
 
+	if c.EncryptionKey() != nil {
+		hashSHA256 := generateSignature(c.EncryptionKey(), compressedDate)
+		r.Header.Add("HashSHA256", base64.URLEncoding.EncodeToString(hashSHA256))
+	}
+
 	err = retry.Retry(
 		func(attempt uint) error {
 			resp, err := client.Do(r)
@@ -130,6 +138,11 @@ func sendOneMetricUpdate(c *config.Config, metric storage.Metrics, client *http.
 
 	r.Header.Add("Content-Type", "application/json")
 	r.Header.Add("Content-Encoding", "gzip")
+
+	if c.EncryptionKey() != nil {
+		hashSHA256 := generateSignature(c.EncryptionKey(), compressedDate)
+		r.Header.Add("HashSHA256", base64.URLEncoding.EncodeToString(hashSHA256))
+	}
 
 	resp, err := client.Do(r)
 
@@ -226,4 +239,10 @@ func collectNewMetrics(st *storage.StorageRepo) {
 		log.Println(err)
 		return
 	}
+}
+
+func generateSignature(key []byte, date []byte) []byte {
+	h := hmac.New(sha256.New, key)
+	h.Write(date)
+	return h.Sum(nil)
 }

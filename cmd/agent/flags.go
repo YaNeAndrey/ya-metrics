@@ -32,6 +32,7 @@ func parseFlags() *config.Config {
 	srvEndpoit := flag.String("a", "localhost:8080", "Server endpoint address server:port")
 	reportInterval := flag.Uint("r", 10, "Report Interval in seconds")
 	pollInterval := flag.Uint("p", 2, "Pool Interval in seconds")
+	encryptionKey := flag.String("k", "", "encryption key")
 
 	flag.Parse()
 
@@ -68,5 +69,13 @@ func parseFlags() *config.Config {
 	} else {
 		conf.SetPollInterval(int(*pollInterval))
 	}
+
+	encryptionKeyEnv, isExist := os.LookupEnv("KEY")
+	if !isExist {
+		conf.SetEncryptionKey([]byte(*encryptionKey))
+	} else {
+		conf.SetEncryptionKey([]byte(encryptionKeyEnv))
+	}
+
 	return conf
 }

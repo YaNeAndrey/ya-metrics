@@ -12,6 +12,7 @@ type Config struct {
 	srvPort        int
 	pollInterval   time.Duration //in seconds
 	reportInterval time.Duration //in seconds
+	encryptionKey  []byte
 }
 
 func NewConfig() *Config {
@@ -21,6 +22,7 @@ func NewConfig() *Config {
 	c.SetSrvPort(8080)
 	c.SetPollInterval(2)
 	c.SetReportInterval(10)
+	c.encryptionKey = nil
 	return &c
 }
 
@@ -34,6 +36,10 @@ func (c *Config) Scheme() string {
 
 func (c *Config) SrvAddr() string {
 	return c.srvAddr
+}
+
+func (c *Config) EncryptionKey() []byte {
+	return c.encryptionKey
 }
 
 func (c *Config) SrvPort() int {
@@ -54,6 +60,13 @@ func (c *Config) SetTLS(enableTLS bool) {
 
 func (c *Config) SetSrvAddr(srvAddr string) {
 	c.srvAddr = srvAddr
+}
+
+func (c *Config) SetEncryptionKey(encryptionKey []byte) {
+	if len(encryptionKey) != 16 {
+		return
+	}
+	c.encryptionKey = encryptionKey
 }
 
 func (c *Config) SetSrvPort(srvPort int) error {

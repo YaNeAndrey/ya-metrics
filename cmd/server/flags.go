@@ -31,6 +31,7 @@ func parseFlags() *config.Config {
 	fileStoragePath := flag.String("f", ".\\tmp\\metrics-db.json", "File storage path (.json)")
 	dbConnectionString := flag.String("d", "", "dbConnectionString in Postgres format: postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]")
 	restoreMetrics := flag.Bool("r", true, "Restore old metrics? (true or false)")
+	encryptionKey := flag.String("k", "", "encryption key")
 	flag.Parse()
 
 	srvEndpointEnv, isExist := os.LookupEnv("ADDRESS")
@@ -102,5 +103,11 @@ func parseFlags() *config.Config {
 		conf.SetRestoreMetrics(*restoreMetrics)
 	}
 
+	encryptionKeyEnv, isExist := os.LookupEnv("KEY")
+	if !isExist {
+		conf.SetEncryptionKey([]byte(*encryptionKey))
+	} else {
+		conf.SetEncryptionKey([]byte(encryptionKeyEnv))
+	}
 	return conf
 }

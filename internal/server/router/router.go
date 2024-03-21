@@ -22,6 +22,11 @@ func InitRouter(c config.Config, st *storage.StorageRepo) http.Handler {
 	r.Use(middleware.MyLoggerMiddleware(logger))
 	r.Use(middleware.GzipMiddleware())
 
+	if c.EncryptionKey() != nil {
+		r.Use(middleware.SignatureМerificationMiddleware(c.EncryptionKey()))
+		r.Use(middleware.SignatureDateMiddleware(c.EncryptionKey()))
+	}
+
 	r.Route("/", func(r chi.Router) {
 		r.Post("/updates/", func(rw http.ResponseWriter, req *http.Request) {
 			handlers.HandlePostUpdateMultipleMetricsJSON(rw, req, st)

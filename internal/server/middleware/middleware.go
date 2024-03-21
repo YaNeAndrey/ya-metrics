@@ -1,10 +1,15 @@
 package middleware
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
+	"github.com/YaNeAndrey/ya-metrics/internal/server/signer"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/utils"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 	"github.com/go-chi/chi/v5/middleware"
 	log "github.com/sirupsen/logrus"
+	"io"
 	"net/http"
 	"slices"
 	"strings"
@@ -69,6 +74,54 @@ func GzipMiddleware() func(h http.Handler) http.Handler {
 		}
 		return http.HandlerFunc(fn)
 	}
+}
+
+func SignatureDateMiddleware(key []byte) func(h http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			sw := signer.NewSigrerWriter(w, key)
+			h.ServeHTTP(sw, r)
+		}
+		return http.HandlerFunc(fn)
+	}
+}
+
+func SignatureМerificationMiddleware(key []byte) func(h http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			ow := w
+			base64HashSHA256 := r.Header.Get("HashSHA256")
+			if base64HashSHA256 == "" {
+				h.ServeHTTP(ow, r)
+			}
+
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			hash, err := base64.URLEncoding.DecodeString(base64HashSHA256)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			if !hmac.Equal(hash, generateSignature(key, body)) {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+
+			h.ServeHTTP(ow, r)
+		}
+		return http.HandlerFunc(fn)
+	}
+}
+
+func generateSignature(key []byte, date []byte) []byte {
+	h := hmac.New(sha256.New, key)
+	h.Write(date)
+	return h.Sum(nil)
 }
 
 func SyncUpdateAndFileStorageMiddleware(c config.Config, st *storage.StorageRepo) func(h http.Handler) http.Handler {
