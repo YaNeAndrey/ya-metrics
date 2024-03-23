@@ -13,6 +13,7 @@ type Config struct {
 	pollInterval   time.Duration //in seconds
 	reportInterval time.Duration //in seconds
 	encryptionKey  []byte
+	rateLimit      int
 }
 
 func NewConfig() *Config {
@@ -23,6 +24,7 @@ func NewConfig() *Config {
 	c.SetPollInterval(2)
 	c.SetReportInterval(10)
 	c.encryptionKey = nil
+	c.rateLimit = 1
 	return &c
 }
 
@@ -52,6 +54,10 @@ func (c *Config) PollInterval() time.Duration {
 
 func (c *Config) ReportInterval() time.Duration {
 	return c.reportInterval
+}
+
+func (c *Config) RateLimit() int {
+	return c.rateLimit
 }
 
 func (c *Config) SetTLS(enableTLS bool) {
@@ -99,4 +105,12 @@ func (c *Config) GetHostnameWithScheme() string {
 
 func (c *Config) String() string {
 	return fmt.Sprintf("Agent config: { Server: %s://%s:%d; Poll interval: %s; Report interval: %s} ", c.Scheme(), c.SrvAddr(), c.SrvPort(), c.PollInterval(), c.ReportInterval())
+}
+
+func (c *Config) SetRateLimit(rateLimit int) error {
+	if rateLimit < 0 {
+		return constants.ErrIncorrectRateLimit
+	}
+	c.rateLimit = rateLimit
+	return nil
 }

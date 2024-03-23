@@ -33,7 +33,7 @@ func parseFlags() *config.Config {
 	reportInterval := flag.Uint("r", 10, "Report Interval in seconds")
 	pollInterval := flag.Uint("p", 2, "Pool Interval in seconds")
 	encryptionKey := flag.String("k", "", "encryption key")
-
+	rateLimit := flag.Uint("l", 1, "rate limit")
 	flag.Parse()
 
 	log.Println("afef")
@@ -49,6 +49,16 @@ func parseFlags() *config.Config {
 	if err == nil {
 		conf.SetSrvAddr(srvAddr)
 		conf.SetSrvPort(srvPort)
+	}
+
+	rateLimitEnv, isExist := os.LookupEnv("RATE_LIMIT")
+	if isExist {
+		reportIntervalInt, err := strconv.Atoi(rateLimitEnv)
+		if err == nil {
+			conf.SetRateLimit(reportIntervalInt)
+		}
+	} else {
+		conf.SetReportInterval(int(*rateLimit))
 	}
 
 	reportIntervalEnv, isExist := os.LookupEnv("REPORT_INTERVAL")

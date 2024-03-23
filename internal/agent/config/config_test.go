@@ -22,6 +22,7 @@ func TestNewConfig(t *testing.T) {
 				srvPort:        8080,
 				pollInterval:   time.Duration(2) * time.Second,
 				reportInterval: time.Duration(10) * time.Second,
+				rateLimit:      1,
 			},
 		},
 	}
