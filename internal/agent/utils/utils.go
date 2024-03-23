@@ -12,6 +12,7 @@ import (
 	"github.com/Rican7/retry"
 	"github.com/Rican7/retry/backoff"
 	"github.com/Rican7/retry/strategy"
+	"github.com/shirou/gopsutil/v3/cpu"
 	log "github.com/sirupsen/logrus"
 	"math/rand"
 	"net/http"
@@ -243,11 +244,18 @@ func collectDefaultMetrics(metricsCh chan<- storage.Metrics, c *config.Config) {
 func collectAdditionalMetrics(metricsCh chan<- storage.Metrics, c *config.Config) {
 	for {
 		v, _ := mem.VirtualMemory()
+		percentage, err := cpu.Percent(0, true)
+		CPUusage := float64(0)
+		if err == nil {
+			for _, value := range percentage {
+				CPUusage += value
+			}
+		}
 
 		gaugeMetrics := map[string]float64{
 			"TotalMemory":     float64(v.Total),
 			"FreeMemory":      float64(v.Free),
-			"CPUutilization1": 1.1,
+			"CPUutilization1": CPUusage,
 		}
 
 		for metricName, metricValue := range gaugeMetrics {
@@ -273,7 +281,7 @@ func generateSignature(key []byte, date []byte) []byte {
 func worker(c *config.Config, jobs <-chan storage.Metrics, client *http.Client) {
 	for j := range jobs {
 		err := sendOneMetricUpdate(c, j, client)
-		log.Println(j)
+		//log.Println(j)
 		if err != nil {
 			continue
 		}
