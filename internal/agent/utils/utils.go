@@ -17,11 +17,14 @@ import (
 	"net/http"
 	"net/url"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/YaNeAndrey/ya-metrics/internal/agent/config"
 	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
+
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
 func sendAllMetricsUpdates(st *storage.StorageRepo, c *config.Config) {
@@ -173,6 +176,7 @@ func Compress(data []byte) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
+/*
 func StartMetricsMonitor(st *storage.StorageRepo, c *config.Config) {
 	iterCount := int(c.ReportInterval() / c.PollInterval())
 	for {
@@ -182,62 +186,81 @@ func StartMetricsMonitor(st *storage.StorageRepo, c *config.Config) {
 		}
 		sendAllMetricsUpdates(st, c)
 	}
+}*/
+
+func collectDefaultMetrics(metricsCh chan<- storage.Metrics, c *config.Config) {
+	for {
+		var rtm runtime.MemStats
+		runtime.ReadMemStats(&rtm)
+
+		gaugeMetrics := map[string]float64{
+			"Alloc":         float64(rtm.Alloc),
+			"BuckHashSys":   float64(rtm.BuckHashSys),
+			"Frees":         float64(rtm.Frees),
+			"GCCPUFraction": float64(rtm.GCCPUFraction),
+			"GCSys":         float64(rtm.GCSys),
+			"HeapAlloc":     float64(rtm.HeapAlloc),
+			"HeapIdle":      float64(rtm.HeapIdle),
+			"HeapInuse":     float64(rtm.HeapInuse),
+			"HeapObjects":   float64(rtm.HeapObjects),
+			"HeapReleased":  float64(rtm.HeapReleased),
+			"HeapSys":       float64(rtm.HeapSys),
+			"LastGC":        float64(rtm.LastGC),
+			"Lookups":       float64(rtm.Lookups),
+			"MCacheInuse":   float64(rtm.MCacheInuse),
+			"MCacheSys":     float64(rtm.MCacheSys),
+			"MSpanInuse":    float64(rtm.MSpanInuse),
+			"MSpanSys":      float64(rtm.MSpanSys),
+			"Mallocs":       float64(rtm.Mallocs),
+			"NextGC":        float64(rtm.NextGC),
+			"NumForcedGC":   float64(rtm.NumForcedGC),
+			"NumGC":         float64(rtm.NumGC),
+			"OtherSys":      float64(rtm.OtherSys),
+			"PauseTotalNs":  float64(rtm.PauseTotalNs),
+			"StackInuse":    float64(rtm.StackInuse),
+			"StackSys":      float64(rtm.StackSys),
+			"Sys":           float64(rtm.Sys),
+			"TotalAlloc":    float64(rtm.TotalAlloc),
+			"RandomValue":   rand.Float64(),
+		}
+
+		for metricName, metricValue := range gaugeMetrics {
+			value := metricValue
+			newMetric := storage.Metrics{
+				ID:    metricName,
+				MType: constants.GaugeMetricType,
+				Value: &value,
+			}
+			metricsCh <- newMetric
+		}
+		pollInterval := int64(1)
+
+		metricsCh <- storage.Metrics{ID: "PollCount", MType: constants.CounterMetricType, Delta: &pollInterval}
+		time.Sleep(c.PollInterval())
+	}
 }
 
-func collectNewMetrics(st *storage.StorageRepo) {
-	var rtm runtime.MemStats
-	runtime.ReadMemStats(&rtm)
+func collectAdditionalMetrics(metricsCh chan<- storage.Metrics, c *config.Config) {
+	for {
+		v, _ := mem.VirtualMemory()
 
-	gaugeMetrics := map[string]float64{
-		"Alloc":         float64(rtm.Alloc),
-		"BuckHashSys":   float64(rtm.BuckHashSys),
-		"Frees":         float64(rtm.Frees),
-		"GCCPUFraction": float64(rtm.GCCPUFraction),
-		"GCSys":         float64(rtm.GCSys),
-		"HeapAlloc":     float64(rtm.HeapAlloc),
-		"HeapIdle":      float64(rtm.HeapIdle),
-		"HeapInuse":     float64(rtm.HeapInuse),
-		"HeapObjects":   float64(rtm.HeapObjects),
-		"HeapReleased":  float64(rtm.HeapReleased),
-		"HeapSys":       float64(rtm.HeapSys),
-		"LastGC":        float64(rtm.LastGC),
-		"Lookups":       float64(rtm.Lookups),
-		"MCacheInuse":   float64(rtm.MCacheInuse),
-		"MCacheSys":     float64(rtm.MCacheSys),
-		"MSpanInuse":    float64(rtm.MSpanInuse),
-		"MSpanSys":      float64(rtm.MSpanSys),
-		"Mallocs":       float64(rtm.Mallocs),
-		"NextGC":        float64(rtm.NextGC),
-		"NumForcedGC":   float64(rtm.NumForcedGC),
-		"NumGC":         float64(rtm.NumGC),
-		"OtherSys":      float64(rtm.OtherSys),
-		"PauseTotalNs":  float64(rtm.PauseTotalNs),
-		"StackInuse":    float64(rtm.StackInuse),
-		"StackSys":      float64(rtm.StackSys),
-		"Sys":           float64(rtm.Sys),
-		"TotalAlloc":    float64(rtm.TotalAlloc),
-		"RandomValue":   rand.Float64(),
-	}
+		gaugeMetrics := map[string]float64{
+			"TotalMemory":     float64(v.Total),
+			"FreeMemory":      float64(v.Free),
+			"CPUutilization1": 1.1,
+		}
 
-	myContext := context.TODO()
-	for metricName, metricValue := range gaugeMetrics {
-		newMetric := storage.Metrics{
-			ID:    metricName,
-			MType: constants.GaugeMetricType,
-			Value: &metricValue,
+		for metricName, metricValue := range gaugeMetrics {
+			value := metricValue
+			newMetric := storage.Metrics{
+				ID:    metricName,
+				MType: constants.GaugeMetricType,
+				Value: &value,
+			}
+
+			metricsCh <- newMetric
 		}
-		//log.Println(newMetric)
-		err := (*st).UpdateOneMetric(myContext, newMetric, false)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-	}
-	pollInterval := int64(1)
-	err := (*st).UpdateOneMetric(myContext, storage.Metrics{ID: "PollCount", MType: constants.CounterMetricType, Delta: &pollInterval}, false)
-	if err != nil {
-		log.Println(err)
-		return
+		time.Sleep(c.PollInterval())
 	}
 }
 
@@ -245,4 +268,32 @@ func generateSignature(key []byte, date []byte) []byte {
 	h := hmac.New(sha256.New, key)
 	h.Write(date)
 	return h.Sum(nil)
+}
+
+func worker(c *config.Config, jobs <-chan storage.Metrics, client *http.Client) {
+	for j := range jobs {
+		err := sendOneMetricUpdate(c, j, client)
+		log.Println(j)
+		if err != nil {
+			continue
+		}
+	}
+}
+
+func StartMetricsMonitorWithWorkers(c *config.Config) {
+	numJobs := 32 // 29 (old metrics) + 3 (new metrics)
+	jobs := make(chan storage.Metrics, numJobs)
+	//results := make(chan string, numJobs)
+
+	defer close(jobs)
+	client := http.Client{}
+	go collectDefaultMetrics(jobs, c)
+	go collectAdditionalMetrics(jobs, c)
+
+	var wg sync.WaitGroup
+	wg.Add(c.RateLimit())
+	for w := 1; w <= c.RateLimit(); w++ {
+		go worker(c, jobs, &client)
+	}
+	wg.Wait()
 }
