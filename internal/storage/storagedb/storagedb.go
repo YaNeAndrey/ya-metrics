@@ -3,7 +3,6 @@ package storagedb
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/utils"
@@ -39,7 +38,7 @@ func InitStorageDB(connectionString string) (*StorageDB, error) {
 	return &resStorage, nil
 }
 
-func (st *StorageDB) UpdateOneMetric(c context.Context, newMetric storage.Metrics, setCounterDelta bool) error {
+func (st *StorageDB) UpdateOneMetric(ctx context.Context, newMetric storage.Metrics, setCounterDelta bool) error {
 	db, err := utils.TryToOpenDBConnection(st.connectionString)
 	if err != nil {
 		return err
@@ -55,7 +54,7 @@ func (st *StorageDB) UpdateOneMetric(c context.Context, newMetric storage.Metric
 	switch newMetric.MType {
 	case constants.GaugeMetricType:
 		{
-			if metricID == 0 {
+			if metricID == 0 { // if metric not found in DB
 				_, err = InsertGaugeMetric(myContext, db, newMetric)
 				if err != nil {
 					return err
@@ -69,16 +68,16 @@ func (st *StorageDB) UpdateOneMetric(c context.Context, newMetric storage.Metric
 		}
 	case constants.CounterMetricType:
 		{
-			if metricID == 0 {
+			if metricID == 0 { // if metric not found in DB
 				_, err = InsertCounterMetric(myContext, db, newMetric)
 				if err != nil {
 					return err
 				}
 			} else {
-				if setCounterDelta {
+				if setCounterDelta { // set metric: delta = newdelta
 					_, err = db.ExecContext(myContext, "UPDATE counter SET delta = $1 WHERE id = $2;", newMetric.Delta, metricID)
 
-				} else {
+				} else { // update metric: delta = oldDelta + newDelta
 					_, err = db.ExecContext(myContext, "UPDATE counter SET delta = delta+$1 WHERE id = $2;", newMetric.Delta, metricID)
 				}
 				if err != nil {
@@ -87,12 +86,12 @@ func (st *StorageDB) UpdateOneMetric(c context.Context, newMetric storage.Metric
 			}
 		}
 	default:
-		return errors.New("incorrect metric type")
+		return constants.ErrIncorectMetricType
 	}
 	return nil
 }
 
-func (st *StorageDB) GetAllMetrics(c context.Context) ([]storage.Metrics, error) {
+func (st *StorageDB) GetAllMetrics(ctx context.Context) ([]storage.Metrics, error) {
 	db, err := utils.TryToOpenDBConnection(st.connectionString)
 	if err != nil {
 		return nil, err
@@ -116,10 +115,10 @@ func (st *StorageDB) GetAllMetrics(c context.Context) ([]storage.Metrics, error)
 	return resultMetrics, nil
 }
 
-func (st *StorageDB) GetMetricByNameAndType(c context.Context, metricName string, metricType string) (resultMetric storage.Metrics, err error) {
+func (st *StorageDB) GetMetricByNameAndType(ctx context.Context, metricName string, metricType string) (resultMetric *storage.Metrics, err error) {
 	db, err := utils.TryToOpenDBConnection(st.connectionString)
 	if err != nil {
-		return storage.Metrics{}, err
+		return nil, err
 	}
 	defer db.Close()
 
@@ -135,7 +134,7 @@ func (st *StorageDB) GetMetricByNameAndType(c context.Context, metricName string
 			if err != nil {
 				return resultMetric, err
 			}
-			resultMetric = storage.Metrics{ID: metricName, MType: metricType, Value: &value}
+			resultMetric = &storage.Metrics{ID: metricName, MType: metricType, Value: &value}
 		}
 	case constants.CounterMetricType:
 		{
@@ -145,15 +144,15 @@ func (st *StorageDB) GetMetricByNameAndType(c context.Context, metricName string
 			if err != nil {
 				return resultMetric, err
 			}
-			resultMetric = storage.Metrics{ID: metricName, MType: metricType, Delta: &delta}
+			resultMetric = &storage.Metrics{ID: metricName, MType: metricType, Delta: &delta}
 		}
 	default:
-		return storage.Metrics{}, errors.New("incorrect metric type")
+		return nil, constants.ErrIncorectMetricType
 	}
 	return resultMetric, nil
 }
 
-func (st *StorageDB) UpdateMultipleMetrics(c context.Context, newMetrics []storage.Metrics) error {
+func (st *StorageDB) UpdateMultipleMetrics(ctx context.Context, newMetrics []storage.Metrics) error {
 	db, err := utils.TryToOpenDBConnection(st.connectionString)
 	if err != nil {
 		return err
@@ -195,17 +194,17 @@ func (st *StorageDB) UpdateMultipleMetrics(c context.Context, newMetrics []stora
 				}
 			}
 		default:
-			return errors.New("incorrect metric type")
+			return constants.ErrIncorectMetricType
 		}
 	}
 
 	return tx.Commit()
 }
 
-func GetMetricIDFromBD(myContext context.Context, db *sql.DB, metric storage.Metrics) (int, error) {
+func GetMetricIDFromBD(ctx context.Context, db *sql.DB, metric storage.Metrics) (int, error) {
 	selectQuery := fmt.Sprintf("SELECT id FROM %s WHERE name = $1 LIMIT 1;", metric.MType)
 
-	row := db.QueryRowContext(myContext, selectQuery, metric.ID)
+	row := db.QueryRowContext(ctx, selectQuery, metric.ID)
 
 	var id int
 	err := row.Scan(&id)
@@ -218,8 +217,8 @@ func GetMetricIDFromBD(myContext context.Context, db *sql.DB, metric storage.Met
 	return id, nil
 }
 
-func InsertCounterMetric(myContext context.Context, db *sql.DB, metric storage.Metrics) (int, error) {
-	row := db.QueryRowContext(myContext, "INSERT INTO counter (name, delta) VALUES ($1, $2) RETURNING id;", metric.ID, metric.Delta)
+func InsertCounterMetric(ctx context.Context, db *sql.DB, metric storage.Metrics) (int, error) {
+	row := db.QueryRowContext(ctx, "INSERT INTO counter (name, delta) VALUES ($1, $2) RETURNING id;", metric.ID, metric.Delta)
 	var id int
 
 	err := row.Scan(&id)
@@ -230,8 +229,8 @@ func InsertCounterMetric(myContext context.Context, db *sql.DB, metric storage.M
 	return id, nil
 }
 
-func InsertGaugeMetric(myContext context.Context, db *sql.DB, metric storage.Metrics) (int, error) {
-	row := db.QueryRowContext(myContext, "INSERT INTO gauge (name, value) VALUES ($1, $2) RETURNING id", metric.ID, metric.Value)
+func InsertGaugeMetric(ctx context.Context, db *sql.DB, metric storage.Metrics) (int, error) {
+	row := db.QueryRowContext(ctx, "INSERT INTO gauge (name, value) VALUES ($1, $2) RETURNING id", metric.ID, metric.Value)
 	var id int
 
 	err := row.Scan(&id)
@@ -242,8 +241,8 @@ func InsertGaugeMetric(myContext context.Context, db *sql.DB, metric storage.Met
 	return id, nil
 }
 
-func SelectAllGaugeMetrics(myContext context.Context, db *sql.DB) (metrics []storage.Metrics, err error) {
-	rows, err := db.QueryContext(myContext, "SELECT name,value FROM gauge")
+func SelectAllGaugeMetrics(ctx context.Context, db *sql.DB) (metrics []storage.Metrics, err error) {
+	rows, err := db.QueryContext(ctx, "SELECT name,value FROM gauge")
 	if err != nil {
 		return nil, err
 	}
@@ -267,8 +266,8 @@ func SelectAllGaugeMetrics(myContext context.Context, db *sql.DB) (metrics []sto
 	return metrics, nil
 }
 
-func SelectAllCounterMetrics(myContext context.Context, db *sql.DB) (metrics []storage.Metrics, err error) {
-	rows, err := db.QueryContext(myContext, "SELECT name,delta FROM counter")
+func SelectAllCounterMetrics(ctx context.Context, db *sql.DB) (metrics []storage.Metrics, err error) {
+	rows, err := db.QueryContext(ctx, "SELECT name,delta FROM counter")
 	if err != nil {
 		return nil, err
 	}

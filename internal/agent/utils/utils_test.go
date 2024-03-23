@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"context"
 	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/handlers"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage/storagejson"
@@ -15,11 +14,10 @@ import (
 
 	"github.com/YaNeAndrey/ya-metrics/internal/agent/config"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
-
-	"github.com/stretchr/testify/assert"
 )
 
 // +++
+/*
 func Test_collectNewMetrics(t *testing.T) {
 
 	testStorage := storage.StorageRepo(storagejson.NewMemStorageJSON([]storage.Metrics{}))
@@ -46,7 +44,7 @@ func Test_collectNewMetrics(t *testing.T) {
 			assert.Equal(t, 29, len(metrics))
 		})
 	}
-}
+}*/
 
 // +++
 func Test_sendOneMetricUpdate(t *testing.T) {

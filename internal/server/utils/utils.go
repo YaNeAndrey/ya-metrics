@@ -107,22 +107,6 @@ func TryToOpenDBConnection(dbConnectionString string) (*sql.DB, error) {
 				return err
 			}
 
-			/*
-				err = db.PingContext(ctx)
-				if err != nil {
-					if pgerrcode.IsConnectionException(err.Error()) {
-						bufError = nil
-						return err
-					}
-					if err, ok := err.(*pq.Error); ok {
-						if err.Code == pgerrcode.UniqueViolation {
-							bufError = nil
-							return err
-						}
-					}
-					bufError = err
-				}
-			*/
 			return nil
 		},
 		strategy.Limit(4),

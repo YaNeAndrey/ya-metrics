@@ -1,8 +1,8 @@
 package config
 
 import (
-	"errors"
 	"fmt"
+	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	"path"
 	"time"
 
@@ -16,6 +16,7 @@ type Config struct {
 	fileStoragePath    string
 	dbConnectionString string
 	restoreMetrics     bool
+	encryptionKey      []byte
 }
 
 func NewConfig() *Config {
@@ -26,6 +27,7 @@ func NewConfig() *Config {
 	c.fileStoragePath = path.Join("tmp", "metrics-db.json")
 	c.dbConnectionString = ""
 	c.restoreMetrics = true
+	c.encryptionKey = nil
 	return &c
 }
 
@@ -33,12 +35,19 @@ func (c *Config) SetSrvAddr(srvAddr string) {
 	c.srvAddr = srvAddr
 }
 
+func (c *Config) SetEncryptionKey(encryptionKey []byte) {
+	if len(encryptionKey) != 16 {
+		return
+	}
+	c.encryptionKey = encryptionKey
+}
+
 func (c *Config) SetSrvPort(srvPort int) error {
 	if srvPort < 65535 && srvPort > 0 {
 		c.srvPort = srvPort
 		return nil
 	}
-	return errors.New("SrvPort must be in [1:65535]")
+	return constants.ErrIncorrectPortNumber
 }
 
 func (c *Config) SetStoreInterval(storeInterval int) error {
@@ -46,7 +55,7 @@ func (c *Config) SetStoreInterval(storeInterval int) error {
 		c.storeInterval = time.Duration(storeInterval) * time.Second
 		return nil
 	}
-	return errors.New("StoreInterval must be greater then -1")
+	return constants.ErrIncorrectStoreInterval
 }
 
 func (c *Config) SetFileStoragePath(fileStoragePath string) error {
@@ -74,6 +83,10 @@ func (c *Config) SetRestoreMetrics(restoreMetrics bool) {
 
 func (c *Config) SrvAddr() string {
 	return c.srvAddr
+}
+
+func (c *Config) EncryptionKey() []byte {
+	return c.encryptionKey
 }
 
 func (c *Config) SrvPort() int {

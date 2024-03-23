@@ -1,8 +1,8 @@
 package config
 
 import (
-	"errors"
 	"fmt"
+	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	"time"
 )
 
@@ -12,6 +12,8 @@ type Config struct {
 	srvPort        int
 	pollInterval   time.Duration //in seconds
 	reportInterval time.Duration //in seconds
+	encryptionKey  []byte
+	rateLimit      int
 }
 
 func NewConfig() *Config {
@@ -21,6 +23,8 @@ func NewConfig() *Config {
 	c.SetSrvPort(8080)
 	c.SetPollInterval(2)
 	c.SetReportInterval(10)
+	c.encryptionKey = nil
+	c.rateLimit = 1
 	return &c
 }
 
@@ -36,6 +40,10 @@ func (c *Config) SrvAddr() string {
 	return c.srvAddr
 }
 
+func (c *Config) EncryptionKey() []byte {
+	return c.encryptionKey
+}
+
 func (c *Config) SrvPort() int {
 	return c.srvPort
 }
@@ -48,6 +56,10 @@ func (c *Config) ReportInterval() time.Duration {
 	return c.reportInterval
 }
 
+func (c *Config) RateLimit() int {
+	return c.rateLimit
+}
+
 func (c *Config) SetTLS(enableTLS bool) {
 	c.enableTLS = enableTLS
 }
@@ -56,12 +68,19 @@ func (c *Config) SetSrvAddr(srvAddr string) {
 	c.srvAddr = srvAddr
 }
 
+func (c *Config) SetEncryptionKey(encryptionKey []byte) {
+	if len(encryptionKey) != 16 {
+		return
+	}
+	c.encryptionKey = encryptionKey
+}
+
 func (c *Config) SetSrvPort(srvPort int) error {
 	if srvPort < 65535 && srvPort > 0 {
 		c.srvPort = srvPort
 		return nil
 	}
-	return errors.New("SrvPort must be in [1:65535]")
+	return constants.ErrIncorrectPortNumber
 }
 
 func (c *Config) SetPollInterval(pollInterval int) error {
@@ -69,7 +88,7 @@ func (c *Config) SetPollInterval(pollInterval int) error {
 		c.pollInterval = time.Duration(pollInterval) * time.Second
 		return nil
 	}
-	return errors.New("pollInterval must be greater than 0")
+	return constants.ErrIncorrectPollInterval
 }
 
 func (c *Config) SetReportInterval(reportInterval int) error {
@@ -77,7 +96,7 @@ func (c *Config) SetReportInterval(reportInterval int) error {
 		c.reportInterval = time.Duration(reportInterval) * time.Second
 		return nil
 	}
-	return errors.New("reportInterval must be greater than 0")
+	return constants.ErrIncorrectReportInterval
 }
 
 func (c *Config) GetHostnameWithScheme() string {
@@ -86,4 +105,12 @@ func (c *Config) GetHostnameWithScheme() string {
 
 func (c *Config) String() string {
 	return fmt.Sprintf("Agent config: { Server: %s://%s:%d; Poll interval: %s; Report interval: %s} ", c.Scheme(), c.SrvAddr(), c.SrvPort(), c.PollInterval(), c.ReportInterval())
+}
+
+func (c *Config) SetRateLimit(rateLimit int) error {
+	if rateLimit < 0 {
+		return constants.ErrIncorrectRateLimit
+	}
+	c.rateLimit = rateLimit
+	return nil
 }

@@ -2,7 +2,7 @@ package storagejson
 
 import (
 	"context"
-	"errors"
+	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 )
 
@@ -14,7 +14,7 @@ func NewMemStorageJSON(allMetrics []storage.Metrics) *MemStorageJSON {
 	return &MemStorageJSON{allMetrics: allMetrics}
 }
 
-func (ms *MemStorageJSON) UpdateOneMetric(c context.Context, newMetric storage.Metrics, setCounterDelta bool) error {
+func (ms *MemStorageJSON) UpdateOneMetric(ctx context.Context, newMetric storage.Metrics, setCounterDelta bool) error {
 	err := newMetric.CheckMetric()
 	if err != nil {
 		return err
@@ -29,26 +29,26 @@ func (ms *MemStorageJSON) UpdateOneMetric(c context.Context, newMetric storage.M
 	return nil
 }
 
-func (ms *MemStorageJSON) GetAllMetrics(c context.Context) ([]storage.Metrics, error) {
+func (ms *MemStorageJSON) GetAllMetrics(ctx context.Context) ([]storage.Metrics, error) {
 	return ms.allMetrics, nil
 }
 
-func (ms *MemStorageJSON) GetMetricByNameAndType(c context.Context, metricName string, metricType string) (storage.Metrics, error) {
-	metrics, err := ms.GetAllMetrics(c)
+func (ms *MemStorageJSON) GetMetricByNameAndType(ctx context.Context, metricName string, metricType string) (*storage.Metrics, error) {
+	metrics, err := ms.GetAllMetrics(ctx)
 	if err != nil {
-		return storage.Metrics{}, err
+		return nil, err
 	}
 	for _, metr := range metrics {
 		if metr.MType == metricType && metr.ID == metricName {
-			return metr, nil
+			return &metr, nil
 		}
 	}
-	return storage.Metrics{}, errors.New("metric not found")
+	return nil, constants.ErrIncorectMetricType
 }
 
-func (ms *MemStorageJSON) UpdateMultipleMetrics(c context.Context, newMetric []storage.Metrics) error {
+func (ms *MemStorageJSON) UpdateMultipleMetrics(ctx context.Context, newMetric []storage.Metrics) error {
 	for _, metric := range newMetric {
-		err := ms.UpdateOneMetric(c, metric, false)
+		err := ms.UpdateOneMetric(ctx, metric, false)
 		if err != nil {
 			continue
 		}

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"errors"
 	"flag"
+	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"strconv"
@@ -14,7 +14,7 @@ import (
 func parseEndpoint(endpointStr string) (string, int, error) {
 	hp := strings.Split(endpointStr, ":")
 	if len(hp) != 2 {
-		return "", 0, errors.New("need address in a form host:port")
+		return "", 0, constants.ErrIncorrectEndpointFormat
 	}
 	port, err := strconv.Atoi(hp[1])
 	if err != nil {
@@ -31,6 +31,7 @@ func parseFlags() *config.Config {
 	fileStoragePath := flag.String("f", ".\\tmp\\metrics-db.json", "File storage path (.json)")
 	dbConnectionString := flag.String("d", "", "dbConnectionString in Postgres format: postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]")
 	restoreMetrics := flag.Bool("r", true, "Restore old metrics? (true or false)")
+	encryptionKey := flag.String("k", "", "encryption key")
 	flag.Parse()
 
 	srvEndpointEnv, isExist := os.LookupEnv("ADDRESS")
@@ -102,5 +103,11 @@ func parseFlags() *config.Config {
 		conf.SetRestoreMetrics(*restoreMetrics)
 	}
 
+	encryptionKeyEnv, isExist := os.LookupEnv("KEY")
+	if !isExist {
+		conf.SetEncryptionKey([]byte(*encryptionKey))
+	} else {
+		conf.SetEncryptionKey([]byte(encryptionKeyEnv))
+	}
 	return conf
 }
