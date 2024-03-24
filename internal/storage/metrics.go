@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"errors"
 	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 )
 
@@ -17,23 +16,23 @@ func (m *Metrics) CheckMetric() error {
 	case constants.GaugeMetricType:
 		{
 			if m.Value == nil {
-				return errors.New("no value specified for gauge metric")
+				return constants.ErrGaugeValue
 			}
 			if m.Delta != nil {
-				return errors.New("delta must be nil for counter metric")
+				return constants.ErrGaugeDelta
 			}
 		}
 	case constants.CounterMetricType:
 		{
 			if m.Delta == nil {
-				return errors.New("no delta specified for counter metric")
+				return constants.ErrCounterDelta
 			}
 			if m.Value != nil {
-				return errors.New("value must be nil for counter metric")
+				return constants.ErrCounterValue
 			}
 		}
 	default:
-		return errors.New("incorrect metric type")
+		return constants.ErrIncorectMetricType
 	}
 	return nil
 }
@@ -44,7 +43,7 @@ func (m *Metrics) UpdateMetric(newMetric Metrics, setCounterDelta bool) error {
 		return err
 	}
 	if m.MType != newMetric.MType {
-		return errors.New("metric types do not match")
+		return constants.ErrMetricTypeDoNotMatch
 	}
 
 	switch newMetric.MType {
@@ -65,7 +64,7 @@ func (m *Metrics) UpdateMetric(newMetric Metrics, setCounterDelta bool) error {
 			*m.Value = v
 		}
 	default:
-		return errors.New("incorrect metric type")
+		return constants.ErrIncorectMetricType
 	}
 	return nil
 }
