@@ -9,6 +9,7 @@ import (
 	"github.com/YaNeAndrey/ya-metrics/internal/server/utils"
 )
 
+// Config хранит информацию о конфигурации сервера.
 type Config struct {
 	srvAddr            string
 	srvPort            int

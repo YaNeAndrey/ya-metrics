@@ -1,3 +1,4 @@
+// Пакет utils содержит методы для сбора и отправки метрик.
 package utils
 
 import (
@@ -288,6 +289,7 @@ func worker(c *config.Config, jobs <-chan storage.Metrics, client *http.Client) 
 	}
 }
 
+// StartMetricsMonitorWithWorkers - запускает мониторинг метрик.
 func StartMetricsMonitorWithWorkers(c *config.Config) {
 	numJobs := 32 // 29 (old metrics) + 3 (new metrics)
 	jobs := make(chan storage.Metrics, numJobs)

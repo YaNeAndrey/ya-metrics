@@ -32,6 +32,7 @@ const tplStr = `<table>
     </tbody>
 </table>`
 
+// HandleGetReadMetrics возвращает значение всех метрик.
 func HandleGetReadMetrics(w http.ResponseWriter, _ *http.Request, st *storage.StorageRepo) {
 	bufMetricMap := make(map[string]string)
 	w.Header().Set("Content-Type", "text/html")
@@ -64,6 +65,7 @@ func HandleGetReadMetrics(w http.ResponseWriter, _ *http.Request, st *storage.St
 	w.WriteHeader(http.StatusOK)
 }
 
+// HandleGetPing проверяет подключение к базе данных.
 func HandleGetPing(w http.ResponseWriter, _ *http.Request, c config.Config) {
 	db, err := utils.TryToOpenDBConnection(c.DBConnectionString())
 	if err != nil {
@@ -74,6 +76,7 @@ func HandleGetPing(w http.ResponseWriter, _ *http.Request, c config.Config) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// HandleGetReadOneMetric возвращает значение метрики.
 func HandleGetReadOneMetric(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
 	metricType := strings.ToLower(chi.URLParam(r, "type"))
 	metricName := chi.URLParam(r, "name")
@@ -104,6 +107,7 @@ func HandleGetReadOneMetric(w http.ResponseWriter, r *http.Request, st *storage.
 	w.WriteHeader(http.StatusOK)
 }
 
+// HandlePostReadOneMetricJSON возвращает значение метрики в JSON формате.
 func HandlePostReadOneMetricJSON(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
 	if r.Header.Get("Content-Type") != "application/json" {
 		http.Error(w, "Incorrect Content-Type. application/json required", http.StatusBadRequest)
@@ -135,6 +139,7 @@ func HandlePostReadOneMetricJSON(w http.ResponseWriter, r *http.Request, st *sto
 	}
 }
 
+// HandlePostUpdateOneMetric обновляет значение метрики.
 func HandlePostUpdateOneMetric(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
 	metricType := strings.ToLower(chi.URLParam(r, "type"))
 	metricName := chi.URLParam(r, "name")
@@ -148,6 +153,7 @@ func HandlePostUpdateOneMetric(w http.ResponseWriter, r *http.Request, st *stora
 	w.WriteHeader(statusCode)
 }
 
+// HandlePostUpdateOneMetricJSON обновляет значение метрики переданной в JSON формате.
 func HandlePostUpdateOneMetricJSON(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
 	if r.Header.Get("Content-Type") != "application/json" {
 		http.Error(w, "Incorrect Content-Type. application/json required", http.StatusBadRequest)
@@ -180,6 +186,7 @@ func HandlePostUpdateOneMetricJSON(w http.ResponseWriter, r *http.Request, st *s
 	w.WriteHeader(http.StatusOK)
 }
 
+// HandlePostUpdateMultipleMetricsJSON обновляет значение метрик переданных в JSON формате.
 func HandlePostUpdateMultipleMetricsJSON(w http.ResponseWriter, r *http.Request, st *storage.StorageRepo) {
 	if r.Header.Get("Content-Type") != "application/json" {
 		http.Error(w, "Incorrect Content-Type. application/json required", http.StatusBadRequest)
