@@ -79,7 +79,7 @@ func sendAllMetricsInOneRequest(c *config.Config, metrics []storage.Metrics, cli
 	bodyReader := bytes.NewReader(compressedDate)
 
 	//client := &http.Client{}
-	r, _ := http.NewRequest("POST", urlStr, bodyReader)
+	r, _ := http.NewRequest(http.MethodPost, urlStr, bodyReader)
 	r.Header.Add("Content-Type", "application/json")
 	r.Header.Add("Content-Encoding", "gzip")
 

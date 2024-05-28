@@ -79,14 +79,14 @@ func GzipMiddleware() func(h http.Handler) http.Handler {
 func SignatureDateMiddleware(key []byte) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			sw := signer.NewSigrerWriter(w, key)
+			sw := signer.NewSignerWriter(w, key)
 			h.ServeHTTP(sw, r)
 		}
 		return http.HandlerFunc(fn)
 	}
 }
 
-func SignatureМerificationMiddleware(key []byte) func(h http.Handler) http.Handler {
+func SignatureVerificationMiddleware(key []byte) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			ow := w
