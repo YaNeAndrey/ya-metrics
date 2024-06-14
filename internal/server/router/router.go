@@ -5,6 +5,7 @@ import (
 	"github.com/YaNeAndrey/ya-metrics/internal/server/handlers"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/middleware"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -23,11 +24,12 @@ func InitRouter(c config.Config, st *storage.StorageRepo) http.Handler {
 	r.Use(middleware.GzipMiddleware())
 
 	if c.EncryptionKey() != nil {
-		r.Use(middleware.SignatureМerificationMiddleware(c.EncryptionKey()))
+		r.Use(middleware.SignatureVerificationMiddleware(c.EncryptionKey()))
 		r.Use(middleware.SignatureDateMiddleware(c.EncryptionKey()))
 	}
 
 	r.Route("/", func(r chi.Router) {
+		r.Mount("/debug", chimiddleware.Profiler())
 		r.Post("/updates/", func(rw http.ResponseWriter, req *http.Request) {
 			handlers.HandlePostUpdateMultipleMetricsJSON(rw, req, st)
 		})

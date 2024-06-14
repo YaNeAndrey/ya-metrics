@@ -10,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"net/http"
+	_ "net/http/pprof" // подключаем пакет pprof
 )
 
 func main() {
@@ -46,4 +47,5 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
 }

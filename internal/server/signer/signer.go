@@ -7,23 +7,23 @@ import (
 	"net/http"
 )
 
-type SigrerWriter struct {
+type SignerWriter struct {
 	w   http.ResponseWriter
 	key []byte
 }
 
-func NewSigrerWriter(w http.ResponseWriter, key []byte) *SigrerWriter {
-	return &SigrerWriter{
+func NewSignerWriter(w http.ResponseWriter, key []byte) *SignerWriter {
+	return &SignerWriter{
 		w:   w,
 		key: key,
 	}
 }
 
-func (c *SigrerWriter) Header() http.Header {
+func (c *SignerWriter) Header() http.Header {
 	return c.w.Header()
 }
 
-func (c *SigrerWriter) Write(p []byte) (int, error) {
+func (c *SignerWriter) Write(p []byte) (int, error) {
 	hashSHA256 := generateSignature(c.key, p)
 	c.w.Header().Set("HashSHA256", base64.URLEncoding.EncodeToString(hashSHA256))
 	lenBuf, err := c.w.Write(p)
@@ -31,10 +31,10 @@ func (c *SigrerWriter) Write(p []byte) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return lenBuf, err
+	return lenBuf, nil
 }
 
-func (c *SigrerWriter) WriteHeader(statusCode int) {
+func (c *SignerWriter) WriteHeader(statusCode int) {
 	c.w.WriteHeader(statusCode)
 }
 

@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// Config хранит информацию о конфигурации агента.
 type Config struct {
 	enableTLS      bool
 	srvAddr        string
