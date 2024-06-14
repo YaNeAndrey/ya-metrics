@@ -75,13 +75,13 @@ func CheckAndCreateFile(filePath string) error {
 		if os.IsNotExist(err) {
 			separatedPath := strings.Split(filePath, string(os.PathSeparator))
 			dirPath := strings.Join(separatedPath[0:len(separatedPath)-1], string(os.PathSeparator))
-			err = os.MkdirAll(dirPath, 0666)
-			if err != nil {
-				return err
+			errbuf := os.MkdirAll(dirPath, 0666)
+			if errbuf != nil {
+				return errbuf
 			}
-			_, err := os.Create(filePath)
-			if err != nil {
-				return err
+			_, errbuf = os.Create(filePath)
+			if errbuf != nil {
+				return errbuf
 			}
 		} else {
 			return err

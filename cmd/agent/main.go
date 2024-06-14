@@ -7,7 +7,16 @@ import (
 	_ "net/http/pprof"
 )
 
+var buildVersion = "N/A"
+var buildDate = "N/A"
+var buildCommit = "N/A"
+
 func main() {
+
+	log.Printf("Build version: %s", buildVersion)
+	log.Printf("Build date: %s", buildDate)
+	log.Printf("Build commit: %s", buildCommit)
+
 	log.SetReportCaller(true)
 	//testMetrics := []storage.Metrics{}
 
