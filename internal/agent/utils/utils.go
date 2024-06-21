@@ -4,18 +4,16 @@ package utils
 import (
 	"bytes"
 	"compress/gzip"
-	"context"
 	"crypto/hmac"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/Rican7/retry"
-	"github.com/Rican7/retry/backoff"
-	"github.com/Rican7/retry/strategy"
 	"github.com/shirou/gopsutil/v3/cpu"
 	log "github.com/sirupsen/logrus"
-	"math/rand"
+	mrand "math/rand"
 	"net/http"
 	"net/url"
 	"runtime"
@@ -29,6 +27,7 @@ import (
 	"github.com/shirou/gopsutil/v3/mem"
 )
 
+/*
 func sendAllMetricsUpdates(st *storage.StorageRepo, c *config.Config) {
 	client := http.Client{}
 	myContext := context.TODO()
@@ -42,13 +41,6 @@ func sendAllMetricsUpdates(st *storage.StorageRepo, c *config.Config) {
 		log.Println(err)
 	}
 
-	/*for _, metr := range metrics {
-		err = sendOneMetricUpdate(c, metr, &client)
-		if err != nil {
-			log.Println(err)
-		}
-	}
-	*/
 	defaultPollInterval := int64(0)
 	err = (*st).UpdateOneMetric(myContext, storage.Metrics{ID: "PollCount", MType: constants.CounterMetricType, Delta: &defaultPollInterval}, true)
 	if err != nil {
@@ -56,64 +48,72 @@ func sendAllMetricsUpdates(st *storage.StorageRepo, c *config.Config) {
 		return
 	}
 }
+*/
+/*
+	func sendAllMetricsInOneRequest(c *config.Config, metrics []storage.Metrics, client *http.Client) error {
+		serverAddr := c.GetHostnameWithScheme()
 
-func sendAllMetricsInOneRequest(c *config.Config, metrics []storage.Metrics, client *http.Client) error {
-	serverAddr := c.GetHostnameWithScheme()
+		urlStr, err := url.JoinPath(serverAddr, "updates/")
+		if err != nil {
+			log.Println(err)
+			return err
+		}
 
-	urlStr, err := url.JoinPath(serverAddr, "updates/")
-	if err != nil {
-		log.Println(err)
-		return err
-	}
+		jsonDate, err := json.Marshal(metrics)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		bodyDate, err := Compress(jsonDate)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
 
-	jsonDate, err := json.Marshal(metrics)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-	compressedDate, err := Compress(jsonDate)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	bodyReader := bytes.NewReader(compressedDate)
-
-	//client := &http.Client{}
-	r, _ := http.NewRequest(http.MethodPost, urlStr, bodyReader)
-	r.Header.Add("Content-Type", "application/json")
-	r.Header.Add("Content-Encoding", "gzip")
-
-	if c.EncryptionKey() != nil {
-		hashSHA256 := generateSignature(c.EncryptionKey(), compressedDate)
-		r.Header.Add("HashSHA256", base64.URLEncoding.EncodeToString(hashSHA256))
-	}
-
-	err = retry.Retry(
-		func(attempt uint) error {
-			resp, errbuf := client.Do(r)
+		if c.ServerPubKey() != nil {
+			bodyDate, err = rsa.EncryptPKCS1v15(rand.Reader, c.ServerPubKey(), bodyDate)
 			if err != nil {
-				return errbuf
+				return err
 			}
-			errbuf = resp.Body.Close()
-			if errbuf != nil {
-				return errbuf
-			}
-			return nil
-		},
-		strategy.Limit(4),
-		strategy.Backoff(backoff.Incremental(-1*time.Second, 2*time.Second)),
-	)
+		}
 
-	//resp, err := client.Do(r)
+		bodyReader := bytes.NewReader(bodyDate)
 
-	if err != nil {
-		return err
+		//client := &http.Client{}
+		r, _ := http.NewRequest(http.MethodPost, urlStr, bodyReader)
+		r.Header.Add("Content-Type", "application/json")
+		r.Header.Add("Content-Encoding", "gzip")
+
+		if c.EncryptionKey() != nil {
+			hashSHA256 := generateSignature(c.EncryptionKey(), bodyDate)
+			r.Header.Add("HashSHA256", base64.URLEncoding.EncodeToString(hashSHA256))
+		}
+
+		err = retry.Retry(
+			func(attempt uint) error {
+				resp, errbuf := client.Do(r)
+				if err != nil {
+					return errbuf
+				}
+				errbuf = resp.Body.Close()
+				if errbuf != nil {
+					return errbuf
+				}
+				return nil
+			},
+			strategy.Limit(4),
+			strategy.Backoff(backoff.Incremental(-1*time.Second, 2*time.Second)),
+		)
+
+		//resp, err := client.Do(r)
+
+		if err != nil {
+			return err
+		}
+
+		return nil
 	}
-
-	return nil
-}
-
+*/
 func sendOneMetricUpdate(c *config.Config, metric storage.Metrics, client *http.Client) error {
 	serverAddr := c.GetHostnameWithScheme()
 
@@ -128,13 +128,20 @@ func sendOneMetricUpdate(c *config.Config, metric storage.Metrics, client *http.
 		log.Println(err)
 		return err
 	}
-	compressedDate, err := Compress(jsonDate)
+	bodyDate, err := Compress(jsonDate)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	bodyReader := bytes.NewReader(compressedDate)
+	if c.ServerPubKey() != nil {
+		bodyDate, err = rsa.EncryptPKCS1v15(rand.Reader, c.ServerPubKey(), bodyDate)
+		if err != nil {
+			return err
+		}
+	}
+
+	bodyReader := bytes.NewReader(bodyDate)
 
 	r, err := http.NewRequest("POST", urlStr, bodyReader)
 	if err != nil {
@@ -145,7 +152,7 @@ func sendOneMetricUpdate(c *config.Config, metric storage.Metrics, client *http.
 	r.Header.Add("Content-Encoding", "gzip")
 
 	if c.EncryptionKey() != nil {
-		hashSHA256 := generateSignature(c.EncryptionKey(), compressedDate)
+		hashSHA256 := generateSignature(c.EncryptionKey(), bodyDate)
 		r.Header.Add("HashSHA256", base64.URLEncoding.EncodeToString(hashSHA256))
 	}
 
@@ -177,18 +184,6 @@ func Compress(data []byte) ([]byte, error) {
 
 	return b.Bytes(), nil
 }
-
-/*
-func StartMetricsMonitor(st *storage.StorageRepo, c *config.Config) {
-	iterCount := int(c.ReportInterval() / c.PollInterval())
-	for {
-		for i := 0; i < iterCount; i++ {
-			collectNewMetrics(st)
-			time.Sleep(c.PollInterval())
-		}
-		sendAllMetricsUpdates(st, c)
-	}
-}*/
 
 func collectDefaultMetrics(metricsCh chan<- storage.Metrics, c *config.Config) {
 	for {
@@ -223,7 +218,7 @@ func collectDefaultMetrics(metricsCh chan<- storage.Metrics, c *config.Config) {
 			"StackSys":      float64(rtm.StackSys),
 			"Sys":           float64(rtm.Sys),
 			"TotalAlloc":    float64(rtm.TotalAlloc),
-			"RandomValue":   rand.Float64(),
+			"RandomValue":   mrand.Float64(),
 		}
 
 		for metricName, metricValue := range gaugeMetrics {

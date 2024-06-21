@@ -1,8 +1,13 @@
 package config
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"github.com/YaNeAndrey/ya-metrics/internal/constants"
+	log "github.com/sirupsen/logrus"
+	"os"
 	"path"
 	"time"
 
@@ -18,6 +23,8 @@ type Config struct {
 	dbConnectionString string
 	restoreMetrics     bool
 	encryptionKey      []byte
+
+	serverPrivKey *rsa.PrivateKey
 }
 
 func NewConfig() *Config {
@@ -82,6 +89,22 @@ func (c *Config) SetRestoreMetrics(restoreMetrics bool) {
 	c.restoreMetrics = restoreMetrics
 }
 
+func (c *Config) ReadPrivateKey(filePath string) {
+	privateKeyPEM, err := os.ReadFile(filePath)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	privateKeyBlock, _ := pem.Decode(privateKeyPEM)
+	privateKey, err := x509.ParsePKCS1PrivateKey(privateKeyBlock.Bytes)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	c.serverPrivKey = privateKey
+
+}
+
 func (c *Config) SrvAddr() string {
 	return c.srvAddr
 }
@@ -108,6 +131,10 @@ func (c *Config) DBConnectionString() string {
 
 func (c *Config) RestoreMetrics() bool {
 	return c.restoreMetrics
+}
+
+func (c *Config) ServerPrivKey() *rsa.PrivateKey {
+	return c.serverPrivKey
 }
 
 func (c *Config) String() string {

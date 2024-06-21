@@ -34,6 +34,7 @@ func parseFlags() *config.Config {
 	pollInterval := flag.Uint("p", 2, "Pool Interval in seconds")
 	encryptionKey := flag.String("k", "", "encryption key")
 	rateLimit := flag.Uint("l", 1, "rate limit")
+	serverPubKey := flag.String("crypto-key", "public.pem", "file with server public key")
 	flag.Parse()
 
 	log.Println("afef")
@@ -85,6 +86,13 @@ func parseFlags() *config.Config {
 		conf.SetEncryptionKey([]byte(*encryptionKey))
 	} else {
 		conf.SetEncryptionKey([]byte(encryptionKeyEnv))
+	}
+
+	serverPubKeyEnv, isExist := os.LookupEnv("CRYPTO_KEY")
+	if !isExist {
+		conf.ReadServerPubicKey(*serverPubKey)
+	} else {
+		conf.ReadServerPubicKey(serverPubKeyEnv)
 	}
 
 	return conf

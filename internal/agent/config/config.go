@@ -1,8 +1,13 @@
 package config
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"github.com/YaNeAndrey/ya-metrics/internal/constants"
+	log "github.com/sirupsen/logrus"
+	"os"
 	"time"
 )
 
@@ -15,6 +20,8 @@ type Config struct {
 	reportInterval time.Duration //in seconds
 	encryptionKey  []byte
 	rateLimit      int
+
+	serverPubKey *rsa.PublicKey
 }
 
 func NewConfig() *Config {
@@ -43,6 +50,10 @@ func (c *Config) SrvAddr() string {
 
 func (c *Config) EncryptionKey() []byte {
 	return c.encryptionKey
+}
+
+func (c *Config) ServerPubKey() *rsa.PublicKey {
+	return c.serverPubKey
 }
 
 func (c *Config) SrvPort() int {
@@ -98,6 +109,21 @@ func (c *Config) SetReportInterval(reportInterval int) error {
 		return nil
 	}
 	return constants.ErrIncorrectReportInterval
+}
+
+func (c *Config) ReadServerPubicKey(filePath string) {
+	publicKeyPEM, err := os.ReadFile(filePath)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	publicKeyBlock, _ := pem.Decode(publicKeyPEM)
+	publicKey, err := x509.ParsePKIXPublicKey(publicKeyBlock.Bytes)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	c.serverPubKey = publicKey.(*rsa.PublicKey)
 }
 
 func (c *Config) GetHostnameWithScheme() string {
