@@ -91,13 +91,13 @@ func sendAllMetricsInOneRequest(c *config.Config, metrics []storage.Metrics, cli
 
 	err = retry.Retry(
 		func(attempt uint) error {
-			resp, err := client.Do(r)
+			resp, errbuf := client.Do(r)
 			if err != nil {
-				return err
+				return errbuf
 			}
-			err = resp.Body.Close()
-			if err != nil {
-				return err
+			errbuf = resp.Body.Close()
+			if errbuf != nil {
+				return errbuf
 			}
 			return nil
 		},

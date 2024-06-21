@@ -8,12 +8,21 @@ import (
 	"github.com/YaNeAndrey/ya-metrics/internal/storage/storagedb"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage/storagejson"
 	log "github.com/sirupsen/logrus"
-
 	"net/http"
+
 	_ "net/http/pprof" // подключаем пакет pprof
 )
 
+var buildVersion = "N/A"
+var buildDate = "N/A"
+var buildCommit = "N/A"
+
 func main() {
+
+	log.Printf("Build version: %s", buildVersion)
+	log.Printf("Build date: %s", buildDate)
+	log.Printf("Build commit: %s", buildCommit)
+
 	log.SetReportCaller(true)
 
 	conf := parseFlags()
@@ -47,5 +56,4 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 }
