@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/router"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/utils"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
@@ -52,7 +51,7 @@ func main() {
 	}
 	log.Printf(conf.String())
 	r := router.InitRouter(*conf, &st)
-	err = http.ListenAndServe(fmt.Sprintf("%s", conf.SrvAddr()), r)
+	err = http.ListenAndServe(conf.SrvAddr(), r)
 	if err != nil {
 		panic(err)
 	}
