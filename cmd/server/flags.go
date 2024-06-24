@@ -34,7 +34,7 @@ type configValues struct {
 func parseFlags() *config.Config {
 
 	configFlags := configValues{
-		Address:       *flag.String("a", "localhost:8080", "Server endpoint address server:port"),
+		Address:       *flag.String("a", "", "Server endpoint address server:port"),
 		Restore:       *flag.Bool("r", true, "Restore old metrics? (true or false)"),
 		StoreInterval: *flag.Int("i", 300, "Store Interval in seconds"),
 		StoreFile:     *flag.String("f", ".\\tmp\\metrics-db.json", "File storage path (.json)"),
@@ -62,7 +62,7 @@ func parseFlags() *config.Config {
 		configEnv.Address = srvEndpointEnv
 	}
 
-	storeIntervalEnv, isExist := os.LookupEnv("StoreInterval")
+	storeIntervalEnv, isExist := os.LookupEnv("STORE_INTERVAL")
 	if isExist {
 		storeIntervalInt, err := strconv.Atoi(storeIntervalEnv)
 		if err == nil {
@@ -70,7 +70,7 @@ func parseFlags() *config.Config {
 		}
 	}
 
-	dbConnectionStringEnv, isExist := os.LookupEnv("DatabaseDSN")
+	dbConnectionStringEnv, isExist := os.LookupEnv("DATABASE_DSN")
 	if isExist {
 		configEnv.DatabaseDSN = dbConnectionStringEnv
 	}
@@ -89,11 +89,11 @@ func parseFlags() *config.Config {
 	}
 
 	encryptionKeyEnv, isExist := os.LookupEnv("KEY")
-	if !isExist {
+	if isExist {
 		configEnv.EncryptionKey = encryptionKeyEnv
 	}
 
-	serverPrivKeyEnv, isExist := os.LookupEnv("CryptoKey")
+	serverPrivKeyEnv, isExist := os.LookupEnv("CRYPTO_KEY")
 	if isExist {
 		configEnv.CryptoKey = serverPrivKeyEnv
 	}
