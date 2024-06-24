@@ -29,8 +29,8 @@ func NewConfig() *Config {
 	c.SetTLS(false)
 	c.SetSrvAddr("localhost")
 	c.SetSrvPort(8080)
-	c.SetPollInterval(2)
-	c.SetReportInterval(10)
+	c.SetPollInterval(2 * time.Second)
+	c.SetReportInterval(10 * time.Second)
 	c.encryptionKey = nil
 	c.rateLimit = 1
 	return &c

@@ -233,7 +233,7 @@ func TestConfig_SetSrvPort(t *testing.T) {
 
 func TestConfig_SetPollInterval(t *testing.T) {
 	type args struct {
-		pollInterval int
+		pollInterval time.Duration
 	}
 	tests := []struct {
 		name             string
@@ -246,7 +246,7 @@ func TestConfig_SetPollInterval(t *testing.T) {
 			name: "First test. Set poll interval",
 			c:    NewConfig(),
 			args: args{
-				pollInterval: 10,
+				pollInterval: 10 * time.Second,
 			},
 			wantErr: false,
 		},
@@ -266,7 +266,7 @@ func TestConfig_SetPollInterval(t *testing.T) {
 			if tt.wantErr {
 				assert.EqualErrorf(t, err, tt.expectedErrorMsg, "Error should be: %v, got: %v", tt.expectedErrorMsg, err)
 			} else {
-				assert.Equal(t, time.Duration(tt.args.pollInterval)*time.Second, tt.c.pollInterval)
+				assert.Equal(t, tt.args.pollInterval, tt.c.pollInterval)
 			}
 		})
 	}
@@ -274,7 +274,7 @@ func TestConfig_SetPollInterval(t *testing.T) {
 
 func TestConfig_SetReportInterval(t *testing.T) {
 	type args struct {
-		reportInterval int
+		reportInterval time.Duration
 	}
 	tests := []struct {
 		name             string
@@ -287,7 +287,7 @@ func TestConfig_SetReportInterval(t *testing.T) {
 			name: "First test. Set report interval",
 			c:    NewConfig(),
 			args: args{
-				reportInterval: 80,
+				reportInterval: 80 * time.Second,
 			},
 			wantErr: false,
 		},
@@ -307,7 +307,7 @@ func TestConfig_SetReportInterval(t *testing.T) {
 			if tt.wantErr {
 				assert.EqualErrorf(t, err, tt.expectedErrorMsg, "Error should be: %v, got: %v", tt.expectedErrorMsg, err)
 			} else {
-				assert.Equal(t, time.Duration(tt.args.reportInterval)*time.Second, tt.c.reportInterval)
+				assert.Equal(t, tt.args.reportInterval, tt.c.reportInterval)
 			}
 		})
 	}
