@@ -52,7 +52,7 @@ func main() {
 	}
 	log.Printf(conf.String())
 	r := router.InitRouter(*conf, &st)
-	err = http.ListenAndServe(fmt.Sprintf("%s:%d", conf.SrvAddr(), conf.SrvPort()), r)
+	err = http.ListenAndServe(fmt.Sprintf("%s", conf.SrvAddr()), r)
 	if err != nil {
 		panic(err)
 	}
