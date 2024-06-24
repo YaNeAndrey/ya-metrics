@@ -13,34 +13,34 @@ import (
 )
 
 type configJSON struct {
-	Address        string
-	Restore        bool
-	Store_interval time.Duration
-	Store_file     string
-	Database_dsn   string
-	Crypto_key     string
+	Address       string        `json:"address,omitempty"`
+	Restore       bool          `json:"restore,omitempty"`
+	StoreInterval time.Duration `json:"store_interval,omitempty"`
+	StoreFile     string        `json:"store_file,omitempty"`
+	DatabaseDSN   string        `json:"database_dsn,omitempty"`
+	CryptoKey     string        `json:"crypto_key,omitempty"`
 }
 
 type configValues struct {
-	Address        string
-	Restore        bool
-	Store_interval int
-	Store_file     string
-	Database_dsn   string
-	EncryptionKey  string
-	Crypto_key     string
+	Address       string
+	Restore       bool
+	StoreInterval int
+	StoreFile     string
+	DatabaseDSN   string
+	EncryptionKey string
+	CryptoKey     string
 }
 
 func parseFlags() *config.Config {
 
 	configFlags := configValues{
-		Address:        *flag.String("a", "localhost:8080", "Server endpoint address server:port"),
-		Restore:        *flag.Bool("r", true, "Restore old metrics? (true or false)"),
-		Store_interval: *flag.Int("i", 300, "Store Interval in seconds"),
-		Store_file:     *flag.String("f", ".\\tmp\\metrics-db.json", "File storage path (.json)"),
-		Database_dsn:   *flag.String("d", "", "dbConnectionString in Postgres format: postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]"),
-		EncryptionKey:  *flag.String("k", "", "encryption key"),
-		Crypto_key:     *flag.String("crypto-key", "", "file with server private key"),
+		Address:       *flag.String("a", "localhost:8080", "Server endpoint address server:port"),
+		Restore:       *flag.Bool("r", true, "Restore old metrics? (true or false)"),
+		StoreInterval: *flag.Int("i", 300, "Store Interval in seconds"),
+		StoreFile:     *flag.String("f", ".\\tmp\\metrics-db.json", "File storage path (.json)"),
+		DatabaseDSN:   *flag.String("d", "", "dbConnectionString in Postgres format: postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]"),
+		EncryptionKey: *flag.String("k", "", "encryption key"),
+		CryptoKey:     *flag.String("crypto-key", "", "file with server private key"),
 	}
 	configFilePath := *flag.String("c", "", "config file")
 	flag.Parse()
@@ -62,22 +62,22 @@ func parseFlags() *config.Config {
 		configEnv.Address = srvEndpointEnv
 	}
 
-	storeIntervalEnv, isExist := os.LookupEnv("STORE_INTERVAL")
+	storeIntervalEnv, isExist := os.LookupEnv("StoreInterval")
 	if isExist {
 		storeIntervalInt, err := strconv.Atoi(storeIntervalEnv)
 		if err == nil {
-			configEnv.Store_interval = storeIntervalInt
+			configEnv.StoreInterval = storeIntervalInt
 		}
 	}
 
-	dbConnectionStringEnv, isExist := os.LookupEnv("DATABASE_DSN")
+	dbConnectionStringEnv, isExist := os.LookupEnv("DatabaseDSN")
 	if isExist {
-		configEnv.Database_dsn = dbConnectionStringEnv
+		configEnv.DatabaseDSN = dbConnectionStringEnv
 	}
 
 	fileStoragePathEnv, isExist := os.LookupEnv("FILE_STORAGE_PATH")
 	if isExist {
-		configEnv.Store_file = fileStoragePathEnv
+		configEnv.StoreFile = fileStoragePathEnv
 	}
 
 	restoreMetricsEnv, isExist := os.LookupEnv("RESTORE")
@@ -93,9 +93,9 @@ func parseFlags() *config.Config {
 		configEnv.EncryptionKey = encryptionKeyEnv
 	}
 
-	serverPrivKeyEnv, isExist := os.LookupEnv("CRYPTO_KEY")
+	serverPrivKeyEnv, isExist := os.LookupEnv("CryptoKey")
 	if isExist {
-		configEnv.Crypto_key = serverPrivKeyEnv
+		configEnv.CryptoKey = serverPrivKeyEnv
 	}
 
 	return fillСonfig(cj, configFlags, configEnv)
@@ -128,45 +128,45 @@ func fillСonfig(cj configJSON, cf configValues, ce configValues) *config.Config
 		}
 	}
 
-	if ce.Store_interval > 0 {
-		conf.SetStoreInterval(time.Duration(ce.Store_interval) * time.Second)
-	} else if cf.Store_interval > 0 {
-		conf.SetStoreInterval(time.Duration(cf.Store_interval) * time.Second)
-	} else if cj.Store_interval != 0 {
-		conf.SetStoreInterval(cj.Store_interval)
+	if ce.StoreInterval > 0 {
+		conf.SetStoreInterval(time.Duration(ce.StoreInterval) * time.Second)
+	} else if cf.StoreInterval > 0 {
+		conf.SetStoreInterval(time.Duration(cf.StoreInterval) * time.Second)
+	} else if cj.StoreInterval != 0 {
+		conf.SetStoreInterval(cj.StoreInterval)
 	}
 
 	isSet := true
-	if ce.Store_file != "" {
-		isSet = conf.SetFileStoragePath(ce.Store_file) == nil
+	if ce.StoreFile != "" {
+		isSet = conf.SetFileStoragePath(ce.StoreFile) == nil
 	}
-	if !isSet && cf.Store_file != "" {
-		isSet = conf.SetFileStoragePath(cf.Store_file) == nil
+	if !isSet && cf.StoreFile != "" {
+		isSet = conf.SetFileStoragePath(cf.StoreFile) == nil
 	}
-	if !isSet && cj.Store_file != "" {
-		_ = conf.SetFileStoragePath(cj.Store_file)
-	}
-
-	isSet = true
-	if ce.Crypto_key != "" {
-		isSet = conf.ReadPrivateKey(ce.Crypto_key) == nil
-	}
-	if !isSet && cf.Crypto_key != "" {
-		isSet = conf.ReadPrivateKey(cf.Crypto_key) == nil
-	}
-	if !isSet && cj.Crypto_key != "" {
-		_ = conf.ReadPrivateKey(cj.Crypto_key)
+	if !isSet && cj.StoreFile != "" {
+		_ = conf.SetFileStoragePath(cj.StoreFile)
 	}
 
 	isSet = true
-	if ce.Database_dsn != "" {
-		isSet = conf.SetDBConnectionString(ce.Database_dsn) == nil
+	if ce.CryptoKey != "" {
+		isSet = conf.ReadPrivateKey(ce.CryptoKey) == nil
 	}
-	if !isSet && cf.Database_dsn != "" {
-		isSet = conf.SetDBConnectionString(cf.Database_dsn) == nil
+	if !isSet && cf.CryptoKey != "" {
+		isSet = conf.ReadPrivateKey(cf.CryptoKey) == nil
 	}
-	if !isSet && cj.Database_dsn != "" {
-		_ = conf.SetDBConnectionString(cj.Database_dsn)
+	if !isSet && cj.CryptoKey != "" {
+		_ = conf.ReadPrivateKey(cj.CryptoKey)
+	}
+
+	isSet = true
+	if ce.DatabaseDSN != "" {
+		isSet = conf.SetDBConnectionString(ce.DatabaseDSN) == nil
+	}
+	if !isSet && cf.DatabaseDSN != "" {
+		isSet = conf.SetDBConnectionString(cf.DatabaseDSN) == nil
+	}
+	if !isSet && cj.DatabaseDSN != "" {
+		_ = conf.SetDBConnectionString(cj.DatabaseDSN)
 	}
 	return conf
 }
