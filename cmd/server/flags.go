@@ -1,113 +1,187 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"github.com/YaNeAndrey/ya-metrics/internal/constants"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/YaNeAndrey/ya-metrics/internal/server/config"
 )
 
-func parseEndpoint(endpointStr string) (string, int, error) {
-	hp := strings.Split(endpointStr, ":")
-	if len(hp) != 2 {
-		return "", 0, constants.ErrIncorrectEndpointFormat
-	}
-	port, err := strconv.Atoi(hp[1])
-	if err != nil {
-		return "", 0, err
-	}
-	return hp[0], port, nil
+type configJSON struct {
+	Address       string        `json:"address,omitempty"`
+	Restore       bool          `json:"restore,omitempty"`
+	StoreInterval time.Duration `json:"store_interval,omitempty"`
+	StoreFile     string        `json:"store_file,omitempty"`
+	DatabaseDSN   string        `json:"database_dsn,omitempty"`
+	CryptoKey     string        `json:"crypto_key,omitempty"`
+}
+
+type configValues struct {
+	Address       string
+	Restore       bool
+	StoreInterval int
+	StoreFile     string
+	DatabaseDSN   string
+	EncryptionKey string
+	CryptoKey     string
 }
 
 func parseFlags() *config.Config {
-	conf := config.NewConfig()
 
-	srvEndpoit := flag.String("a", "localhost:8080", "Server endpoint address server:port")
-	storeInterval := flag.Uint("i", 300, "Store Interval in seconds")
-	fileStoragePath := flag.String("f", ".\\tmp\\metrics-db.json", "File storage path (.json)")
-	dbConnectionString := flag.String("d", "", "dbConnectionString in Postgres format: postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]")
-	restoreMetrics := flag.Bool("r", true, "Restore old metrics? (true or false)")
-	encryptionKey := flag.String("k", "", "encryption key")
+	configFlags := configValues{
+		Address:       *flag.String("a", "", "Server endpoint address server:port"),
+		Restore:       *flag.Bool("r", true, "Restore old metrics? (true or false)"),
+		StoreInterval: *flag.Int("i", 300, "Store Interval in seconds"),
+		StoreFile:     *flag.String("f", ".\\tmp\\metrics-db.json", "File storage path (.json)"),
+		DatabaseDSN:   *flag.String("d", "", "dbConnectionString in Postgres format: postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]"),
+		EncryptionKey: *flag.String("k", "", "encryption key"),
+		CryptoKey:     *flag.String("crypto-key", "", "file with server private key"),
+	}
+	configFilePath := *flag.String("c", "", "config file")
 	flag.Parse()
 
-	srvEndpointEnv, isExist := os.LookupEnv("ADDRESS")
-	srvAddr, srvPort := "", 0
-	var err error
-	if !isExist {
-		srvAddr, srvPort, err = parseEndpoint(*srvEndpoit)
-	} else {
-		srvAddr, srvPort, err = parseEndpoint(srvEndpointEnv)
+	configFileEnv, isExist := os.LookupEnv("CONFIG")
+	if isExist {
+		configFilePath = configFileEnv
 	}
 
-	if err == nil {
-		conf.SetSrvAddr(srvAddr)
-		err := conf.SetSrvPort(srvPort)
-		if err != nil {
-			log.Println(err)
-		}
+	file, _ := os.ReadFile(configFilePath)
+	cj := configJSON{}
+
+	_ = json.Unmarshal([]byte(file), &cj)
+
+	configEnv := configValues{}
+
+	srvEndpointEnv, isExist := os.LookupEnv("ADDRESS")
+	if isExist {
+		configEnv.Address = srvEndpointEnv
 	}
 
 	storeIntervalEnv, isExist := os.LookupEnv("STORE_INTERVAL")
 	if isExist {
 		storeIntervalInt, err := strconv.Atoi(storeIntervalEnv)
 		if err == nil {
-			err := conf.SetStoreInterval(storeIntervalInt)
-			if err != nil {
-				log.Println(err)
-			}
-		}
-	} else {
-		err := conf.SetStoreInterval(int(*storeInterval))
-		if err != nil {
-			log.Println(err)
+			configEnv.StoreInterval = storeIntervalInt
 		}
 	}
 
 	dbConnectionStringEnv, isExist := os.LookupEnv("DATABASE_DSN")
 	if isExist {
-		err := conf.SetDBConnectionString(dbConnectionStringEnv)
-		if err != nil {
-			log.Println(err)
-		}
-	} else {
-		err := conf.SetDBConnectionString(*dbConnectionString)
-		if err != nil {
-			log.Println(err)
-		}
+		configEnv.DatabaseDSN = dbConnectionStringEnv
 	}
 
 	fileStoragePathEnv, isExist := os.LookupEnv("FILE_STORAGE_PATH")
 	if isExist {
-		err := conf.SetFileStoragePath(fileStoragePathEnv)
-		if err != nil {
-			log.Println(err)
-		}
-	} else {
-		err := conf.SetFileStoragePath(*fileStoragePath)
-		if err != nil {
-			log.Println(err)
-		}
+		configEnv.StoreFile = fileStoragePathEnv
 	}
 
 	restoreMetricsEnv, isExist := os.LookupEnv("RESTORE")
 	if isExist {
 		restoreMetricsBool, err := strconv.ParseBool(restoreMetricsEnv)
 		if err == nil {
-			conf.SetRestoreMetrics(restoreMetricsBool)
+			configEnv.Restore = restoreMetricsBool
 		}
-	} else {
-		conf.SetRestoreMetrics(*restoreMetrics)
 	}
 
 	encryptionKeyEnv, isExist := os.LookupEnv("KEY")
-	if !isExist {
-		conf.SetEncryptionKey([]byte(*encryptionKey))
+	if isExist {
+		configEnv.EncryptionKey = encryptionKeyEnv
+	}
+
+	serverPrivKeyEnv, isExist := os.LookupEnv("CRYPTO_KEY")
+	if isExist {
+		configEnv.CryptoKey = serverPrivKeyEnv
+	}
+
+	return fillСonfig(cj, configFlags, configEnv)
+}
+
+func fillСonfig(cj configJSON, cf configValues, ce configValues) *config.Config {
+	conf := config.NewConfig()
+
+	if ce.Restore || cf.Restore || cj.Restore {
+		conf.SetRestoreMetrics(true)
+	}
+
+	if ce.EncryptionKey != "" {
+		conf.SetEncryptionKey([]byte(ce.EncryptionKey))
 	} else {
-		conf.SetEncryptionKey([]byte(encryptionKeyEnv))
+		conf.SetEncryptionKey([]byte(cf.EncryptionKey))
+	}
+
+	if ce.Address != "" {
+		if checkEndpoint(ce.Address) == nil {
+			conf.SetSrvAddr(ce.Address)
+		}
+	} else if cf.Address != "" {
+		if checkEndpoint(cf.Address) == nil {
+			conf.SetSrvAddr(cf.Address)
+		}
+	} else if cj.Address != "" {
+		if checkEndpoint(cj.Address) == nil {
+			conf.SetSrvAddr(cj.Address)
+		}
+	}
+
+	if ce.StoreInterval > 0 {
+		conf.SetStoreInterval(time.Duration(ce.StoreInterval) * time.Second)
+	} else if cf.StoreInterval > 0 {
+		conf.SetStoreInterval(time.Duration(cf.StoreInterval) * time.Second)
+	} else if cj.StoreInterval != 0 {
+		conf.SetStoreInterval(cj.StoreInterval)
+	}
+
+	isSet := true
+	if ce.StoreFile != "" {
+		isSet = conf.SetFileStoragePath(ce.StoreFile) == nil
+	}
+	if !isSet && cf.StoreFile != "" {
+		isSet = conf.SetFileStoragePath(cf.StoreFile) == nil
+	}
+	if !isSet && cj.StoreFile != "" {
+		_ = conf.SetFileStoragePath(cj.StoreFile)
+	}
+
+	isSet = true
+	if ce.CryptoKey != "" {
+		isSet = conf.ReadPrivateKey(ce.CryptoKey) == nil
+	}
+	if !isSet && cf.CryptoKey != "" {
+		isSet = conf.ReadPrivateKey(cf.CryptoKey) == nil
+	}
+	if !isSet && cj.CryptoKey != "" {
+		_ = conf.ReadPrivateKey(cj.CryptoKey)
+	}
+
+	isSet = true
+	if ce.DatabaseDSN != "" {
+		isSet = conf.SetDBConnectionString(ce.DatabaseDSN) == nil
+	}
+	if !isSet && cf.DatabaseDSN != "" {
+		isSet = conf.SetDBConnectionString(cf.DatabaseDSN) == nil
+	}
+	if !isSet && cj.DatabaseDSN != "" {
+		_ = conf.SetDBConnectionString(cj.DatabaseDSN)
 	}
 	return conf
+}
+
+func checkEndpoint(endpointStr string) error {
+	hp := strings.Split(endpointStr, ":")
+	if len(hp) != 2 {
+		return constants.ErrIncorrectEndpointFormat
+	}
+	port, err := strconv.Atoi(hp[1])
+	if err != nil {
+		return err
+	}
+	if port < 65535 && port > 0 {
+		return constants.ErrIncorrectPortNumber
+	}
+	return nil
 }

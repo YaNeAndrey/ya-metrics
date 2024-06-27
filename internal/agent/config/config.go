@@ -1,8 +1,13 @@
 package config
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"github.com/YaNeAndrey/ya-metrics/internal/constants"
+	log "github.com/sirupsen/logrus"
+	"os"
 	"time"
 )
 
@@ -15,6 +20,8 @@ type Config struct {
 	reportInterval time.Duration //in seconds
 	encryptionKey  []byte
 	rateLimit      int
+
+	serverPubKey *rsa.PublicKey
 }
 
 func NewConfig() *Config {
@@ -22,8 +29,8 @@ func NewConfig() *Config {
 	c.SetTLS(false)
 	c.SetSrvAddr("localhost")
 	c.SetSrvPort(8080)
-	c.SetPollInterval(2)
-	c.SetReportInterval(10)
+	c.SetPollInterval(2 * time.Second)
+	c.SetReportInterval(10 * time.Second)
 	c.encryptionKey = nil
 	c.rateLimit = 1
 	return &c
@@ -43,6 +50,10 @@ func (c *Config) SrvAddr() string {
 
 func (c *Config) EncryptionKey() []byte {
 	return c.encryptionKey
+}
+
+func (c *Config) ServerPubKey() *rsa.PublicKey {
+	return c.serverPubKey
 }
 
 func (c *Config) SrvPort() int {
@@ -84,20 +95,36 @@ func (c *Config) SetSrvPort(srvPort int) error {
 	return constants.ErrIncorrectPortNumber
 }
 
-func (c *Config) SetPollInterval(pollInterval int) error {
+func (c *Config) SetPollInterval(pollInterval time.Duration) error {
 	if pollInterval > 0 {
-		c.pollInterval = time.Duration(pollInterval) * time.Second
+		c.pollInterval = pollInterval
 		return nil
 	}
 	return constants.ErrIncorrectPollInterval
 }
 
-func (c *Config) SetReportInterval(reportInterval int) error {
+func (c *Config) SetReportInterval(reportInterval time.Duration) error {
 	if reportInterval > 0 {
-		c.reportInterval = time.Duration(reportInterval) * time.Second
+		c.reportInterval = reportInterval
 		return nil
 	}
 	return constants.ErrIncorrectReportInterval
+}
+
+func (c *Config) ReadServerPubicKey(filePath string) error {
+	publicKeyPEM, err := os.ReadFile(filePath)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	publicKeyBlock, _ := pem.Decode(publicKeyPEM)
+	publicKey, err := x509.ParsePKIXPublicKey(publicKeyBlock.Bytes)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	c.serverPubKey = publicKey.(*rsa.PublicKey)
+	return nil
 }
 
 func (c *Config) GetHostnameWithScheme() string {

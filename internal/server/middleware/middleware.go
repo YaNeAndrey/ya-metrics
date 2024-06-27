@@ -1,7 +1,10 @@
 package middleware
 
 import (
+	"bytes"
 	"crypto/hmac"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/signer"
@@ -71,6 +74,29 @@ func GzipMiddleware() func(h http.Handler) http.Handler {
 				defer cr.Close()
 			}
 			h.ServeHTTP(ow, r)
+		}
+		return http.HandlerFunc(fn)
+	}
+}
+
+func DecryptMiddleware(key *rsa.PrivateKey) func(h http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			body, err := io.ReadAll(r.Body)
+			if r.Method == http.MethodPost {
+				if err != nil {
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				} else {
+					decryptBody, decErr := rsa.DecryptPKCS1v15(rand.Reader, key, body)
+					if decErr != nil {
+						w.WriteHeader(http.StatusBadRequest)
+						return
+					}
+					r.Body = io.NopCloser(bytes.NewReader(decryptBody))
+				}
+			}
+			h.ServeHTTP(w, r)
 		}
 		return http.HandlerFunc(fn)
 	}
