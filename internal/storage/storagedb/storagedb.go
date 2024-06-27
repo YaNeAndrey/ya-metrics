@@ -45,9 +45,7 @@ func (st *StorageDB) UpdateOneMetric(ctx context.Context, newMetric storage.Metr
 	}
 	defer db.Close()
 
-	myContext := context.TODO()
-
-	metricID, err := GetMetricIDFromBD(myContext, db, newMetric)
+	metricID, err := GetMetricIDFromBD(ctx, db, newMetric)
 	if err != nil {
 		return err
 	}
@@ -55,12 +53,12 @@ func (st *StorageDB) UpdateOneMetric(ctx context.Context, newMetric storage.Metr
 	case constants.GaugeMetricType:
 		{
 			if metricID == 0 { // if metric not found in DB
-				_, err = InsertGaugeMetric(myContext, db, newMetric)
+				_, err = InsertGaugeMetric(ctx, db, newMetric)
 				if err != nil {
 					return err
 				}
 			} else {
-				_, err = db.ExecContext(myContext, "UPDATE gauge SET value = $1 WHERE id = $2;", newMetric.Value, metricID)
+				_, err = db.ExecContext(ctx, "UPDATE gauge SET value = $1 WHERE id = $2;", newMetric.Value, metricID)
 				if err != nil {
 					return err
 				}
@@ -69,16 +67,16 @@ func (st *StorageDB) UpdateOneMetric(ctx context.Context, newMetric storage.Metr
 	case constants.CounterMetricType:
 		{
 			if metricID == 0 { // if metric not found in DB
-				_, err = InsertCounterMetric(myContext, db, newMetric)
+				_, err = InsertCounterMetric(ctx, db, newMetric)
 				if err != nil {
 					return err
 				}
 			} else {
 				if setCounterDelta { // set metric: delta = newdelta
-					_, err = db.ExecContext(myContext, "UPDATE counter SET delta = $1 WHERE id = $2;", newMetric.Delta, metricID)
+					_, err = db.ExecContext(ctx, "UPDATE counter SET delta = $1 WHERE id = $2;", newMetric.Delta, metricID)
 
 				} else { // update metric: delta = oldDelta + newDelta
-					_, err = db.ExecContext(myContext, "UPDATE counter SET delta = delta+$1 WHERE id = $2;", newMetric.Delta, metricID)
+					_, err = db.ExecContext(ctx, "UPDATE counter SET delta = delta+$1 WHERE id = $2;", newMetric.Delta, metricID)
 				}
 				if err != nil {
 					return err
@@ -98,15 +96,14 @@ func (st *StorageDB) GetAllMetrics(ctx context.Context) ([]storage.Metrics, erro
 	}
 	defer db.Close()
 
-	myContext := context.TODO()
 	var resultMetrics []storage.Metrics
-	bufMetricSlice, err := SelectAllGaugeMetrics(myContext, db)
+	bufMetricSlice, err := SelectAllGaugeMetrics(ctx, db)
 	if err != nil {
 		return nil, err
 	}
 	resultMetrics = append(resultMetrics, bufMetricSlice...)
 
-	bufMetricSlice, err = SelectAllCounterMetrics(myContext, db)
+	bufMetricSlice, err = SelectAllCounterMetrics(ctx, db)
 	if err != nil {
 		return nil, err
 	}
@@ -122,13 +119,11 @@ func (st *StorageDB) GetMetricByNameAndType(ctx context.Context, metricName stri
 	}
 	defer db.Close()
 
-	myContext := context.TODO()
-
 	//var resultMetric storage.Metrics
 	switch metricType {
 	case constants.GaugeMetricType:
 		{
-			row := db.QueryRowContext(myContext, "SELECT value FROM gauge WHERE name = $1 LIMIT 1;", metricName)
+			row := db.QueryRowContext(ctx, "SELECT value FROM gauge WHERE name = $1 LIMIT 1;", metricName)
 			var value float64
 			err = row.Scan(&value)
 			if err != nil {
@@ -138,7 +133,7 @@ func (st *StorageDB) GetMetricByNameAndType(ctx context.Context, metricName stri
 		}
 	case constants.CounterMetricType:
 		{
-			row := db.QueryRowContext(myContext, "SELECT delta FROM counter WHERE name = $1 LIMIT 1;", metricName)
+			row := db.QueryRowContext(ctx, "SELECT delta FROM counter WHERE name = $1 LIMIT 1;", metricName)
 			var delta int64
 			err = row.Scan(&delta)
 			if err != nil {
@@ -159,20 +154,19 @@ func (st *StorageDB) UpdateMultipleMetrics(ctx context.Context, newMetrics []sto
 	}
 	defer db.Close()
 
-	myContext := context.TODO()
 	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
 	for _, metric := range newMetrics {
-		metricID, err := GetMetricIDFromBD(myContext, db, metric)
+		metricID, err := GetMetricIDFromBD(ctx, db, metric)
 		if err != nil {
 			return err
 		}
 		switch metric.MType {
 		case constants.GaugeMetricType:
 			{
-				_, err = tx.ExecContext(myContext, "INSERT INTO gauge (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = excluded.value;", metric.ID, metric.Value)
+				_, err = tx.ExecContext(ctx, "INSERT INTO gauge (name, value) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET value = excluded.value;", metric.ID, metric.Value)
 				if err != nil {
 					return err
 				}
@@ -180,14 +174,14 @@ func (st *StorageDB) UpdateMultipleMetrics(ctx context.Context, newMetrics []sto
 		case constants.CounterMetricType:
 			{
 				if metricID == 0 {
-					_, err = tx.ExecContext(myContext, "INSERT INTO counter (name, delta) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET delta = counter.delta + $2", metric.ID, metric.Delta)
+					_, err = tx.ExecContext(ctx, "INSERT INTO counter (name, delta) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET delta = counter.delta + $2", metric.ID, metric.Delta)
 
 					if err != nil {
 						return err
 
 					}
 				} else {
-					_, err = tx.ExecContext(myContext, "UPDATE counter SET delta = delta+$1 WHERE id = $2;", metric.Delta, metricID)
+					_, err = tx.ExecContext(ctx, "UPDATE counter SET delta = delta+$1 WHERE id = $2;", metric.Delta, metricID)
 					if err != nil {
 						return err
 					}
