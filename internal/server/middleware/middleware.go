@@ -1,7 +1,10 @@
 package middleware
 
 import (
+	"bytes"
 	"crypto/hmac"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/signer"
@@ -10,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	log "github.com/sirupsen/logrus"
 	"io"
+	"net"
 	"net/http"
 	"slices"
 	"strings"
@@ -76,6 +80,29 @@ func GzipMiddleware() func(h http.Handler) http.Handler {
 	}
 }
 
+func DecryptMiddleware(key *rsa.PrivateKey) func(h http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			body, err := io.ReadAll(r.Body)
+			if r.Method == http.MethodPost {
+				if err != nil {
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				} else {
+					decryptBody, decErr := rsa.DecryptPKCS1v15(rand.Reader, key, body)
+					if decErr != nil {
+						w.WriteHeader(http.StatusBadRequest)
+						return
+					}
+					r.Body = io.NopCloser(bytes.NewReader(decryptBody))
+				}
+			}
+			h.ServeHTTP(w, r)
+		}
+		return http.HandlerFunc(fn)
+	}
+}
+
 func SignatureDateMiddleware(key []byte) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
@@ -113,6 +140,25 @@ func SignatureVerificationMiddleware(key []byte) func(h http.Handler) http.Handl
 			}
 
 			h.ServeHTTP(ow, r)
+		}
+		return http.HandlerFunc(fn)
+	}
+}
+
+func CheckSubnetMiddleware(subnet *net.IPNet) func(h http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			agentIPstr := r.Header.Get("X-Real-IP")
+			agentIP := net.ParseIP(agentIPstr)
+			if agentIP == nil {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+			if !subnet.Contains(agentIP) {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+			h.ServeHTTP(w, r)
 		}
 		return http.HandlerFunc(fn)
 	}

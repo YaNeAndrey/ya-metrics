@@ -6,20 +6,23 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/hmac"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/Rican7/retry"
-	"github.com/Rican7/retry/backoff"
-	"github.com/Rican7/retry/strategy"
 	"github.com/shirou/gopsutil/v3/cpu"
 	log "github.com/sirupsen/logrus"
-	"math/rand"
+	mrand "math/rand"
+	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"os/signal"
 	"runtime"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/YaNeAndrey/ya-metrics/internal/agent/config"
@@ -28,91 +31,6 @@ import (
 
 	"github.com/shirou/gopsutil/v3/mem"
 )
-
-func sendAllMetricsUpdates(st *storage.StorageRepo, c *config.Config) {
-	client := http.Client{}
-	myContext := context.TODO()
-	metrics, err := (*st).GetAllMetrics(myContext)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	err = sendAllMetricsInOneRequest(c, metrics, &client)
-	if err != nil {
-		log.Println(err)
-	}
-
-	/*for _, metr := range metrics {
-		err = sendOneMetricUpdate(c, metr, &client)
-		if err != nil {
-			log.Println(err)
-		}
-	}
-	*/
-	defaultPollInterval := int64(0)
-	err = (*st).UpdateOneMetric(myContext, storage.Metrics{ID: "PollCount", MType: constants.CounterMetricType, Delta: &defaultPollInterval}, true)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-}
-
-func sendAllMetricsInOneRequest(c *config.Config, metrics []storage.Metrics, client *http.Client) error {
-	serverAddr := c.GetHostnameWithScheme()
-
-	urlStr, err := url.JoinPath(serverAddr, "updates/")
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	jsonDate, err := json.Marshal(metrics)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-	compressedDate, err := Compress(jsonDate)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	bodyReader := bytes.NewReader(compressedDate)
-
-	//client := &http.Client{}
-	r, _ := http.NewRequest(http.MethodPost, urlStr, bodyReader)
-	r.Header.Add("Content-Type", "application/json")
-	r.Header.Add("Content-Encoding", "gzip")
-
-	if c.EncryptionKey() != nil {
-		hashSHA256 := generateSignature(c.EncryptionKey(), compressedDate)
-		r.Header.Add("HashSHA256", base64.URLEncoding.EncodeToString(hashSHA256))
-	}
-
-	err = retry.Retry(
-		func(attempt uint) error {
-			resp, errbuf := client.Do(r)
-			if err != nil {
-				return errbuf
-			}
-			errbuf = resp.Body.Close()
-			if errbuf != nil {
-				return errbuf
-			}
-			return nil
-		},
-		strategy.Limit(4),
-		strategy.Backoff(backoff.Incremental(-1*time.Second, 2*time.Second)),
-	)
-
-	//resp, err := client.Do(r)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
 
 func sendOneMetricUpdate(c *config.Config, metric storage.Metrics, client *http.Client) error {
 	serverAddr := c.GetHostnameWithScheme()
@@ -128,13 +46,20 @@ func sendOneMetricUpdate(c *config.Config, metric storage.Metrics, client *http.
 		log.Println(err)
 		return err
 	}
-	compressedDate, err := Compress(jsonDate)
+	bodyDate, err := Compress(jsonDate)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	bodyReader := bytes.NewReader(compressedDate)
+	if c.ServerPubKey() != nil {
+		bodyDate, err = rsa.EncryptPKCS1v15(rand.Reader, c.ServerPubKey(), bodyDate)
+		if err != nil {
+			return err
+		}
+	}
+
+	bodyReader := bytes.NewReader(bodyDate)
 
 	r, err := http.NewRequest("POST", urlStr, bodyReader)
 	if err != nil {
@@ -144,8 +69,13 @@ func sendOneMetricUpdate(c *config.Config, metric storage.Metrics, client *http.
 	r.Header.Add("Content-Type", "application/json")
 	r.Header.Add("Content-Encoding", "gzip")
 
+	localIP := GetLocalIP()
+	if localIP != nil {
+		r.Header.Add("X-Real-IP", localIP.String())
+	}
+
 	if c.EncryptionKey() != nil {
-		hashSHA256 := generateSignature(c.EncryptionKey(), compressedDate)
+		hashSHA256 := generateSignature(c.EncryptionKey(), bodyDate)
 		r.Header.Add("HashSHA256", base64.URLEncoding.EncodeToString(hashSHA256))
 	}
 
@@ -178,98 +108,99 @@ func Compress(data []byte) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-/*
-func StartMetricsMonitor(st *storage.StorageRepo, c *config.Config) {
-	iterCount := int(c.ReportInterval() / c.PollInterval())
+func collectDefaultMetrics(ctx context.Context, metricsCh chan<- storage.Metrics, c *config.Config) {
 	for {
-		for i := 0; i < iterCount; i++ {
-			collectNewMetrics(st)
-			time.Sleep(c.PollInterval())
-		}
-		sendAllMetricsUpdates(st, c)
-	}
-}*/
+		select {
+		case <-ctx.Done():
+			return
 
-func collectDefaultMetrics(metricsCh chan<- storage.Metrics, c *config.Config) {
-	for {
-		var rtm runtime.MemStats
-		runtime.ReadMemStats(&rtm)
+		case <-time.After(c.PollInterval()):
 
-		gaugeMetrics := map[string]float64{
-			"Alloc":         float64(rtm.Alloc),
-			"BuckHashSys":   float64(rtm.BuckHashSys),
-			"Frees":         float64(rtm.Frees),
-			"GCCPUFraction": float64(rtm.GCCPUFraction),
-			"GCSys":         float64(rtm.GCSys),
-			"HeapAlloc":     float64(rtm.HeapAlloc),
-			"HeapIdle":      float64(rtm.HeapIdle),
-			"HeapInuse":     float64(rtm.HeapInuse),
-			"HeapObjects":   float64(rtm.HeapObjects),
-			"HeapReleased":  float64(rtm.HeapReleased),
-			"HeapSys":       float64(rtm.HeapSys),
-			"LastGC":        float64(rtm.LastGC),
-			"Lookups":       float64(rtm.Lookups),
-			"MCacheInuse":   float64(rtm.MCacheInuse),
-			"MCacheSys":     float64(rtm.MCacheSys),
-			"MSpanInuse":    float64(rtm.MSpanInuse),
-			"MSpanSys":      float64(rtm.MSpanSys),
-			"Mallocs":       float64(rtm.Mallocs),
-			"NextGC":        float64(rtm.NextGC),
-			"NumForcedGC":   float64(rtm.NumForcedGC),
-			"NumGC":         float64(rtm.NumGC),
-			"OtherSys":      float64(rtm.OtherSys),
-			"PauseTotalNs":  float64(rtm.PauseTotalNs),
-			"StackInuse":    float64(rtm.StackInuse),
-			"StackSys":      float64(rtm.StackSys),
-			"Sys":           float64(rtm.Sys),
-			"TotalAlloc":    float64(rtm.TotalAlloc),
-			"RandomValue":   rand.Float64(),
-		}
+			var rtm runtime.MemStats
+			runtime.ReadMemStats(&rtm)
 
-		for metricName, metricValue := range gaugeMetrics {
-			value := metricValue
-			newMetric := storage.Metrics{
-				ID:    metricName,
-				MType: constants.GaugeMetricType,
-				Value: &value,
+			gaugeMetrics := map[string]float64{
+				"Alloc":         float64(rtm.Alloc),
+				"BuckHashSys":   float64(rtm.BuckHashSys),
+				"Frees":         float64(rtm.Frees),
+				"GCCPUFraction": float64(rtm.GCCPUFraction),
+				"GCSys":         float64(rtm.GCSys),
+				"HeapAlloc":     float64(rtm.HeapAlloc),
+				"HeapIdle":      float64(rtm.HeapIdle),
+				"HeapInuse":     float64(rtm.HeapInuse),
+				"HeapObjects":   float64(rtm.HeapObjects),
+				"HeapReleased":  float64(rtm.HeapReleased),
+				"HeapSys":       float64(rtm.HeapSys),
+				"LastGC":        float64(rtm.LastGC),
+				"Lookups":       float64(rtm.Lookups),
+				"MCacheInuse":   float64(rtm.MCacheInuse),
+				"MCacheSys":     float64(rtm.MCacheSys),
+				"MSpanInuse":    float64(rtm.MSpanInuse),
+				"MSpanSys":      float64(rtm.MSpanSys),
+				"Mallocs":       float64(rtm.Mallocs),
+				"NextGC":        float64(rtm.NextGC),
+				"NumForcedGC":   float64(rtm.NumForcedGC),
+				"NumGC":         float64(rtm.NumGC),
+				"OtherSys":      float64(rtm.OtherSys),
+				"PauseTotalNs":  float64(rtm.PauseTotalNs),
+				"StackInuse":    float64(rtm.StackInuse),
+				"StackSys":      float64(rtm.StackSys),
+				"Sys":           float64(rtm.Sys),
+				"TotalAlloc":    float64(rtm.TotalAlloc),
+				"RandomValue":   mrand.Float64(),
 			}
-			metricsCh <- newMetric
-		}
-		pollInterval := int64(1)
 
-		metricsCh <- storage.Metrics{ID: "PollCount", MType: constants.CounterMetricType, Delta: &pollInterval}
-		time.Sleep(c.PollInterval())
+			for metricName, metricValue := range gaugeMetrics {
+				value := metricValue
+				newMetric := storage.Metrics{
+					ID:    metricName,
+					MType: constants.GaugeMetricType,
+					Value: &value,
+				}
+				metricsCh <- newMetric
+			}
+			pollInterval := int64(1)
+
+			metricsCh <- storage.Metrics{ID: "PollCount", MType: constants.CounterMetricType, Delta: &pollInterval}
+			//	time.Sleep(c.PollInterval())
+		}
 	}
 }
 
-func collectAdditionalMetrics(metricsCh chan<- storage.Metrics, c *config.Config) {
+func collectAdditionalMetrics(ctx context.Context, metricsCh chan<- storage.Metrics, c *config.Config) {
 	for {
-		v, _ := mem.VirtualMemory()
-		percentage, err := cpu.Percent(0, true)
-		CPUusage := float64(0)
-		if err == nil {
-			for _, value := range percentage {
-				CPUusage += value
-			}
-		}
+		select {
+		case <-ctx.Done():
+			return
 
-		gaugeMetrics := map[string]float64{
-			"TotalMemory":     float64(v.Total),
-			"FreeMemory":      float64(v.Free),
-			"CPUutilization1": CPUusage,
-		}
+		case <-time.After(c.PollInterval()):
 
-		for metricName, metricValue := range gaugeMetrics {
-			value := metricValue
-			newMetric := storage.Metrics{
-				ID:    metricName,
-				MType: constants.GaugeMetricType,
-				Value: &value,
+			v, _ := mem.VirtualMemory()
+			percentage, err := cpu.Percent(0, true)
+			CPUusage := float64(0)
+			if err == nil {
+				for _, value := range percentage {
+					CPUusage += value
+				}
 			}
 
-			metricsCh <- newMetric
+			gaugeMetrics := map[string]float64{
+				"TotalMemory":     float64(v.Total),
+				"FreeMemory":      float64(v.Free),
+				"CPUutilization1": CPUusage,
+			}
+
+			for metricName, metricValue := range gaugeMetrics {
+				value := metricValue
+				newMetric := storage.Metrics{
+					ID:    metricName,
+					MType: constants.GaugeMetricType,
+					Value: &value,
+				}
+
+				metricsCh <- newMetric
+			}
 		}
-		time.Sleep(c.PollInterval())
 	}
 }
 
@@ -279,12 +210,20 @@ func generateSignature(key []byte, date []byte) []byte {
 	return h.Sum(nil)
 }
 
-func worker(c *config.Config, jobs <-chan storage.Metrics, client *http.Client) {
-	for j := range jobs {
-		err := sendOneMetricUpdate(c, j, client)
-		//log.Println(j)
-		if err != nil {
-			continue
+func worker(ctx context.Context, c *config.Config, jobs <-chan storage.Metrics, client *http.Client, wg *sync.WaitGroup) {
+
+	defer wg.Done()
+
+	for /*j := range jobs*/ {
+		select {
+		case <-ctx.Done():
+			return
+
+		case j := <-jobs:
+			err := sendOneMetricUpdate(c, j, client)
+			if err != nil {
+				continue
+			}
 		}
 	}
 }
@@ -293,17 +232,40 @@ func worker(c *config.Config, jobs <-chan storage.Metrics, client *http.Client) 
 func StartMetricsMonitorWithWorkers(c *config.Config) {
 	numJobs := 32 // 29 (old metrics) + 3 (new metrics)
 	jobs := make(chan storage.Metrics, numJobs)
-	//results := make(chan string, numJobs)
 
-	defer close(jobs)
+	ctx, cancel := context.WithCancel(context.Background())
+	exit := make(chan os.Signal, 1)
+	signal.Notify(exit, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+
+	idleConnsClosed := make(chan struct{})
+
 	client := http.Client{}
-	go collectDefaultMetrics(jobs, c)
-	go collectAdditionalMetrics(jobs, c)
+	go collectDefaultMetrics(ctx, jobs, c)
+	go collectAdditionalMetrics(ctx, jobs, c)
 
 	var wg sync.WaitGroup
 	wg.Add(c.RateLimit())
 	for w := 1; w <= c.RateLimit(); w++ {
-		go worker(c, jobs, &client)
+		go worker(ctx, c, jobs, &client, &wg)
 	}
-	wg.Wait()
+
+	go func() {
+		<-exit
+		cancel()
+		wg.Wait()
+		close(jobs)
+		close(idleConnsClosed)
+	}()
+
+	<-idleConnsClosed
+}
+
+func GetLocalIP() net.IP {
+	conn, err := net.Dial("udp", "1.1.1.1:80")
+	if err != nil {
+		return nil
+	}
+	defer conn.Close()
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP
 }
