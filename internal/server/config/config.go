@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/YaNeAndrey/ya-metrics/internal/constants"
 	log "github.com/sirupsen/logrus"
+	"net"
 	"os"
 	"path"
 	"strconv"
@@ -26,6 +27,7 @@ type Config struct {
 	encryptionKey      []byte
 
 	serverPrivKey *rsa.PrivateKey
+	trustedSubnet *net.IPNet
 }
 
 func NewConfig() *Config {
@@ -77,6 +79,15 @@ func (c *Config) SetRestoreMetrics(restoreMetrics bool) {
 	c.restoreMetrics = restoreMetrics
 }
 
+func (c *Config) SetTrustedSubnet(mask string) error {
+	_, i, err := net.ParseCIDR(mask)
+	if err != nil {
+		return err
+	}
+	c.trustedSubnet = i
+	return nil
+}
+
 func (c *Config) ReadPrivateKey(filePath string) error {
 	privateKeyPEM, err := os.ReadFile(filePath)
 	if err != nil {
@@ -119,6 +130,10 @@ func (c *Config) RestoreMetrics() bool {
 
 func (c *Config) ServerPrivKey() *rsa.PrivateKey {
 	return c.serverPrivKey
+}
+
+func (c *Config) TrustedSubnet() *net.IPNet {
+	return c.trustedSubnet
 }
 
 func (c *Config) String() string {

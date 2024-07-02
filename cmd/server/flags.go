@@ -19,6 +19,7 @@ type configJSON struct {
 	StoreFile     string        `json:"store_file,omitempty"`
 	DatabaseDSN   string        `json:"database_dsn,omitempty"`
 	CryptoKey     string        `json:"crypto_key,omitempty"`
+	TrustedSubnet string        `json:"trusted_subnet,omitempty"`
 }
 
 type configValues struct {
@@ -29,6 +30,7 @@ type configValues struct {
 	DatabaseDSN   string
 	EncryptionKey string
 	CryptoKey     string
+	TrustedSubnet string
 }
 
 func parseFlags() *config.Config {
@@ -41,6 +43,7 @@ func parseFlags() *config.Config {
 		DatabaseDSN:   *flag.String("d", "", "dbConnectionString in Postgres format: postgresql://[user[:password]@][netloc][:port][/dbname][?param1=value1&...]"),
 		EncryptionKey: *flag.String("k", "", "encryption key"),
 		CryptoKey:     *flag.String("crypto-key", "", "file with server private key"),
+		TrustedSubnet: *flag.String("t", "", "trusted Subnet"),
 	}
 	configFilePath := *flag.String("c", "", "config file")
 	flag.Parse()
@@ -98,10 +101,15 @@ func parseFlags() *config.Config {
 		configEnv.CryptoKey = serverPrivKeyEnv
 	}
 
-	return fillСonfig(cj, configFlags, configEnv)
+	trustedSubnetEnv, isExist := os.LookupEnv("TRUSTED_SUBNET")
+	if isExist {
+		configEnv.TrustedSubnet = trustedSubnetEnv
+	}
+
+	return fillConfig(cj, configFlags, configEnv)
 }
 
-func fillСonfig(cj configJSON, cf configValues, ce configValues) *config.Config {
+func fillConfig(cj configJSON, cf configValues, ce configValues) *config.Config {
 	conf := config.NewConfig()
 
 	if ce.Restore || cf.Restore || cj.Restore {
@@ -168,6 +176,18 @@ func fillСonfig(cj configJSON, cf configValues, ce configValues) *config.Config
 	if !isSet && cj.DatabaseDSN != "" {
 		_ = conf.SetDBConnectionString(cj.DatabaseDSN)
 	}
+
+	isSet = true
+	if ce.TrustedSubnet != "" {
+		isSet = conf.SetTrustedSubnet(ce.TrustedSubnet) == nil
+	}
+	if !isSet && cf.TrustedSubnet != "" {
+		isSet = conf.SetTrustedSubnet(cf.TrustedSubnet) == nil
+	}
+	if !isSet && cj.TrustedSubnet != "" {
+		_ = conf.SetTrustedSubnet(cj.TrustedSubnet)
+	}
+
 	return conf
 }
 

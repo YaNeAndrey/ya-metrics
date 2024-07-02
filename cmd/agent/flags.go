@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"github.com/YaNeAndrey/ya-metrics/internal/constants"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"strconv"
 	"strings"
@@ -47,7 +48,10 @@ func parseFlags() *config.Config {
 	file, _ := os.ReadFile(configFilePath)
 	cj := configJSON{}
 
-	_ = json.Unmarshal([]byte(file), &cj)
+	err := json.Unmarshal([]byte(file), &cj)
+	if err != nil {
+		log.Println()
+	}
 
 	configEnv := configValues{}
 
@@ -89,10 +93,10 @@ func parseFlags() *config.Config {
 	if isExist {
 		configEnv.CryptoKey = serverPubKeyEnv
 	}
-	return fillСonfig(cj, configFlags, configEnv)
+	return fillConfig(cj, configFlags, configEnv)
 }
 
-func fillСonfig(cj configJSON, cf configValues, ce configValues) *config.Config {
+func fillConfig(cj configJSON, cf configValues, ce configValues) *config.Config {
 	conf := config.NewConfig()
 
 	if ce.Address != "" {

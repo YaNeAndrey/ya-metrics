@@ -21,6 +21,9 @@ func InitRouter(c config.Config, st *storage.StorageRepo) http.Handler {
 	logger := log.New()
 	logger.SetLevel(log.InfoLevel)
 	r.Use(middleware.MyLoggerMiddleware(logger))
+	if c.TrustedSubnet() != nil {
+		r.Use(middleware.CheckSubnetMiddleware(c.TrustedSubnet()))
+	}
 	if c.ServerPrivKey() != nil {
 		r.Use(middleware.DecryptMiddleware(c.ServerPrivKey()))
 	}

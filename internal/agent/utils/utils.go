@@ -15,6 +15,7 @@ import (
 	"github.com/shirou/gopsutil/v3/cpu"
 	log "github.com/sirupsen/logrus"
 	mrand "math/rand"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -67,6 +68,11 @@ func sendOneMetricUpdate(c *config.Config, metric storage.Metrics, client *http.
 
 	r.Header.Add("Content-Type", "application/json")
 	r.Header.Add("Content-Encoding", "gzip")
+
+	localIP := GetLocalIP()
+	if localIP != nil {
+		r.Header.Add("X-Real-IP", localIP.String())
+	}
 
 	if c.EncryptionKey() != nil {
 		hashSHA256 := generateSignature(c.EncryptionKey(), bodyDate)
@@ -252,4 +258,14 @@ func StartMetricsMonitorWithWorkers(c *config.Config) {
 	}()
 
 	<-idleConnsClosed
+}
+
+func GetLocalIP() net.IP {
+	conn, err := net.Dial("udp", "1.1.1.1:80")
+	if err != nil {
+		return nil
+	}
+	defer conn.Close()
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP
 }

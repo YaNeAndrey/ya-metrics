@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	log "github.com/sirupsen/logrus"
 	"io"
+	"net"
 	"net/http"
 	"slices"
 	"strings"
@@ -139,6 +140,25 @@ func SignatureVerificationMiddleware(key []byte) func(h http.Handler) http.Handl
 			}
 
 			h.ServeHTTP(ow, r)
+		}
+		return http.HandlerFunc(fn)
+	}
+}
+
+func CheckSubnetMiddleware(subnet *net.IPNet) func(h http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			agentIPstr := r.Header.Get("X-Real-IP")
+			agentIP := net.ParseIP(agentIPstr)
+			if agentIP == nil {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+			if !subnet.Contains(agentIP) {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+			h.ServeHTTP(w, r)
 		}
 		return http.HandlerFunc(fn)
 	}
