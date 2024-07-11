@@ -95,7 +95,7 @@ func sendOneMetricUpdateHTTP(c *config.Config, metric storage.Metrics, client *h
 	return nil
 }
 
-func sendOneMetricUpdateRPC(c *config.Config, metric storage.Metrics, client *pb.MetricsClient) error {
+func sendOneMetricUpdateRPC(metric storage.Metrics, client *pb.MetricsClient) error {
 	metricRPC := pb.Metric{
 		ID: metric.ID,
 	}
@@ -244,11 +244,8 @@ func workerHTTP(ctx context.Context, c *config.Config, jobs <-chan storage.Metri
 
 		case j := <-jobs:
 			var err error
-			if c.RPCAddr() != "" {
-				//err = sendOneMetricUpdateRPC(c, j, client)
-			} else {
-				err = sendOneMetricUpdateHTTP(c, j, client)
-			}
+
+			err = sendOneMetricUpdateHTTP(c, j, client)
 			if err != nil {
 				continue
 			}
@@ -256,7 +253,7 @@ func workerHTTP(ctx context.Context, c *config.Config, jobs <-chan storage.Metri
 	}
 }
 
-func workerRPC(ctx context.Context, c *config.Config, jobs <-chan storage.Metrics, client *pb.MetricsClient, wg *sync.WaitGroup) {
+func workerRPC(ctx context.Context, jobs <-chan storage.Metrics, client *pb.MetricsClient, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for {
@@ -265,7 +262,7 @@ func workerRPC(ctx context.Context, c *config.Config, jobs <-chan storage.Metric
 			return
 		case j := <-jobs:
 			var err error
-			err = sendOneMetricUpdateRPC(c, j, client)
+			err = sendOneMetricUpdateRPC(j, client)
 
 			if err != nil {
 				log.Println(err)
@@ -298,7 +295,8 @@ func StartMetricsMonitorWithWorkers(c *config.Config) {
 
 	if c.RPCAddr() != "" {
 		useRPC = true
-		conn, err := grpc.Dial(c.RPCAddr(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+		conn, err := grpc.NewClient(c.RPCAddr(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+		//	conn, err := grpc.Dial(c.RPCAddr(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			log.Println(err)
 			cancel()
@@ -312,7 +310,7 @@ func StartMetricsMonitorWithWorkers(c *config.Config) {
 	}
 	for w := 1; w <= c.RateLimit(); w++ {
 		if useRPC {
-			go workerRPC(ctx, c, jobs, &clientRPC, &wg)
+			go workerRPC(ctx, jobs, &clientRPC, &wg)
 		} else {
 			go workerHTTP(ctx, c, jobs, &client, &wg)
 		}
@@ -327,17 +325,6 @@ func StartMetricsMonitorWithWorkers(c *config.Config) {
 	}()
 
 	<-idleConnsClosed
-}
-
-func OpenRPCClient(srvAddr string) (*pb.MetricsClient, error) {
-	conn, err := grpc.Dial(srvAddr)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
-	c := pb.NewMetricsClient(conn)
-	return &c, nil
 }
 
 func GetLocalIP() net.IP {
