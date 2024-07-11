@@ -18,13 +18,11 @@ func main() {
 	log.Printf("Build commit: %s", buildCommit)
 
 	log.SetReportCaller(true)
-	//testMetrics := []storage.Metrics{}
-
-	//st := storage.StorageRepo(storagejson.NewMemStorageJSON(testMetrics))
 
 	conf := parseFlags()
 	log.Printf((*conf).String())
 	go http.ListenAndServe(":8001", nil)
+
 	utils.StartMetricsMonitorWithWorkers(conf)
-	//utils.StartMetricsMonitor(&st, conf)
+
 }

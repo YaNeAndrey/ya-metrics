@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/router"
 	"github.com/YaNeAndrey/ya-metrics/internal/server/utils"
@@ -8,9 +10,16 @@ import (
 	"github.com/YaNeAndrey/ya-metrics/internal/storage/storagedb"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage/storagejson"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
+	"net"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
-	_ "net/http/pprof" // подключаем пакет pprof
+	pb "github.com/YaNeAndrey/ya-metrics/internal/proto"
+	myrpc "github.com/YaNeAndrey/ya-metrics/internal/server/grpc"
+	_ "net/http/pprof"
 )
 
 var buildVersion = "N/A"
@@ -50,10 +59,44 @@ func main() {
 		}
 		defer utils.SaveAllMetricsToFile(conf.FileStoragePath(), &st)
 	}
+
 	log.Printf(conf.String())
-	r := router.InitRouter(*conf, &st)
-	err = http.ListenAndServe(fmt.Sprintf("%s:%d", conf.SrvAddr(), conf.SrvPort()), r)
-	if err != nil {
+
+	var srv = http.Server{Addr: conf.SrvAddr()}
+	srv.Handler = router.InitRouter(*conf, &st)
+
+	idleConnsClosed := make(chan struct{})
+	sigint := make(chan os.Signal, 1)
+	signal.Notify(sigint, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+
+	go func() {
+		<-sigint
+		if err := srv.Shutdown(context.Background()); err != nil {
+			log.Printf("HTTP server Shutdown: %v", err)
+		}
+		close(idleConnsClosed)
+	}()
+
+	if conf.RPCAddr() != "" {
+		go func() {
+			listen, err := net.Listen("tcp", conf.RPCAddr())
+			if err != nil {
+				log.Fatal(err)
+			}
+			s := grpc.NewServer()
+			pb.RegisterMetricsServer(s, myrpc.NewGRPCMetricsServer(&st))
+
+			fmt.Println("Сервер gRPC начал работу")
+			if err := s.Serve(listen); err != nil {
+				log.Fatal(err)
+			}
+		}()
+	}
+
+	if err = srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		panic(err)
 	}
+
+	<-idleConnsClosed
+	fmt.Println("Server Shutdown gracefully")
 }

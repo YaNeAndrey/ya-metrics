@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package demo;
+
+option go_package = "internal/proto";
+
+message Metric {
+  string ID = 1;
+  enum Type {
+    GAUGE = 0;
+    COUNTER = 1;
+  }
+  Type MType = 2;
+  double Value = 3;
+  int64 Delta = 4;
+}
+
+message MetricRequest {
+  Metric metric = 1;
+}
+
+message MetricResponse {
+}
+
+service Metrics {
+  rpc UpdateMetric(MetricRequest) returns (MetricResponse);
+}
