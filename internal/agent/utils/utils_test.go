@@ -110,7 +110,7 @@ func Test_sendOneMetricUpdate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := sendOneMetricUpdate(conf, tt.args.metric, &client)
+			err := sendOneMetricUpdateHTTP(conf, tt.args.metric, &client)
 			if err != nil {
 				log.Fatal(err)
 			}
