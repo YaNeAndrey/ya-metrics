@@ -20,8 +20,9 @@ type Config struct {
 	reportInterval time.Duration //in seconds
 	encryptionKey  []byte
 	rateLimit      int
+	serverPubKey   *rsa.PublicKey
 
-	serverPubKey *rsa.PublicKey
+	rpcAddr string
 }
 
 func NewConfig() *Config {
@@ -78,6 +79,10 @@ func (c *Config) SetTLS(enableTLS bool) {
 
 func (c *Config) SetSrvAddr(srvAddr string) {
 	c.srvAddr = srvAddr
+}
+
+func (c *Config) SetRPCAddr(rpcAddr string) {
+	c.rpcAddr = rpcAddr
 }
 
 func (c *Config) SetEncryptionKey(encryptionKey []byte) {
@@ -141,4 +146,8 @@ func (c *Config) SetRateLimit(rateLimit int) error {
 	}
 	c.rateLimit = rateLimit
 	return nil
+}
+
+func (c *Config) RPCAddr() string {
+	return c.rpcAddr
 }

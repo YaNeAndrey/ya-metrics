@@ -31,6 +31,7 @@ type configValues struct {
 	EncryptionKey string
 	CryptoKey     string
 	TrustedSubnet string
+	AddrRPC       string
 }
 
 func parseFlags() *config.Config {
@@ -44,6 +45,7 @@ func parseFlags() *config.Config {
 		EncryptionKey: *flag.String("k", "", "encryption key"),
 		CryptoKey:     *flag.String("crypto-key", "", "file with server private key"),
 		TrustedSubnet: *flag.String("t", "", "trusted Subnet"),
+		AddrRPC:       *flag.String("rpc", "", "gRPC endpoint address server:port"),
 	}
 	configFilePath := *flag.String("c", "", "config file")
 	flag.Parse()
@@ -63,6 +65,11 @@ func parseFlags() *config.Config {
 	srvEndpointEnv, isExist := os.LookupEnv("ADDRESS")
 	if isExist {
 		configEnv.Address = srvEndpointEnv
+	}
+
+	rpcEndpointEnv, isExist := os.LookupEnv("RPC_ADDRESS")
+	if isExist {
+		configEnv.AddrRPC = rpcEndpointEnv
 	}
 
 	storeIntervalEnv, isExist := os.LookupEnv("STORE_INTERVAL")
@@ -122,18 +129,18 @@ func fillConfig(cj configJSON, cf configValues, ce configValues) *config.Config 
 		conf.SetEncryptionKey([]byte(cf.EncryptionKey))
 	}
 
-	if ce.Address != "" {
-		if checkEndpoint(ce.Address) == nil {
-			conf.SetSrvAddr(ce.Address)
-		}
-	} else if cf.Address != "" {
-		if checkEndpoint(cf.Address) == nil {
-			conf.SetSrvAddr(cf.Address)
-		}
-	} else if cj.Address != "" {
-		if checkEndpoint(cj.Address) == nil {
-			conf.SetSrvAddr(cj.Address)
-		}
+	if checkEndpoint(ce.Address) == nil {
+		conf.SetSrvAddr(ce.Address)
+	} else if checkEndpoint(cf.Address) == nil {
+		conf.SetSrvAddr(cf.Address)
+	} else if checkEndpoint(cj.Address) == nil {
+		conf.SetSrvAddr(cj.Address)
+	}
+
+	if checkEndpoint(ce.AddrRPC) == nil {
+		conf.SetRPCAddr(ce.AddrRPC)
+	} else if checkEndpoint(cf.AddrRPC) == nil {
+		conf.SetRPCAddr(cf.AddrRPC)
 	}
 
 	if ce.StoreInterval > 0 {
@@ -200,7 +207,7 @@ func checkEndpoint(endpointStr string) error {
 	if err != nil {
 		return err
 	}
-	if port < 65535 && port > 0 {
+	if port > 65535 || port < 0 {
 		return constants.ErrIncorrectPortNumber
 	}
 	return nil

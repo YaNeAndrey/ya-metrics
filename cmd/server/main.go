@@ -10,12 +10,16 @@ import (
 	"github.com/YaNeAndrey/ya-metrics/internal/storage/storagedb"
 	"github.com/YaNeAndrey/ya-metrics/internal/storage/storagejson"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
-	_ "net/http/pprof" // подключаем пакет pprof
+	pb "github.com/YaNeAndrey/ya-metrics/internal/proto"
+	myrpc "github.com/YaNeAndrey/ya-metrics/internal/server/grpc"
+	_ "net/http/pprof"
 )
 
 var buildVersion = "N/A"
@@ -72,6 +76,22 @@ func main() {
 		}
 		close(idleConnsClosed)
 	}()
+
+	if conf.RPCAddr() != "" {
+		go func() {
+			listen, err := net.Listen("tcp", conf.RPCAddr())
+			if err != nil {
+				log.Fatal(err)
+			}
+			s := grpc.NewServer()
+			pb.RegisterMetricsServer(s, myrpc.NewGRPCMetricsServer(&st))
+
+			fmt.Println("Сервер gRPC начал работу")
+			if err := s.Serve(listen); err != nil {
+				log.Fatal(err)
+			}
+		}()
+	}
 
 	if err = srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		panic(err)

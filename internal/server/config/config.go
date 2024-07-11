@@ -28,6 +28,8 @@ type Config struct {
 
 	serverPrivKey *rsa.PrivateKey
 	trustedSubnet *net.IPNet
+
+	rpcAddr string
 }
 
 func NewConfig() *Config {
@@ -88,6 +90,10 @@ func (c *Config) SetTrustedSubnet(mask string) error {
 	return nil
 }
 
+func (c *Config) SetRPCAddr(rpcAddr string) {
+	c.rpcAddr = rpcAddr
+}
+
 func (c *Config) ReadPrivateKey(filePath string) error {
 	privateKeyPEM, err := os.ReadFile(filePath)
 	if err != nil {
@@ -106,6 +112,10 @@ func (c *Config) ReadPrivateKey(filePath string) error {
 
 func (c *Config) SrvAddr() string {
 	return c.srvAddr
+}
+
+func (c *Config) RPCAddr() string {
+	return c.rpcAddr
 }
 
 func (c *Config) EncryptionKey() []byte {

@@ -14,6 +14,8 @@ import (
 	"fmt"
 	"github.com/shirou/gopsutil/v3/cpu"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	mrand "math/rand"
 	"net"
 	"net/http"
@@ -30,9 +32,11 @@ import (
 	"github.com/YaNeAndrey/ya-metrics/internal/storage"
 
 	"github.com/shirou/gopsutil/v3/mem"
+
+	pb "github.com/YaNeAndrey/ya-metrics/internal/proto"
 )
 
-func sendOneMetricUpdate(c *config.Config, metric storage.Metrics, client *http.Client) error {
+func sendOneMetricUpdateHTTP(c *config.Config, metric storage.Metrics, client *http.Client) error {
 	serverAddr := c.GetHostnameWithScheme()
 
 	urlStr, err := url.JoinPath(serverAddr, "update")
@@ -85,6 +89,26 @@ func sendOneMetricUpdate(c *config.Config, metric storage.Metrics, client *http.
 		return err
 	}
 	err = resp.Body.Close()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func sendOneMetricUpdateRPC(c *config.Config, metric storage.Metrics, client *pb.MetricsClient) error {
+	metricRPC := pb.Metric{
+		ID: metric.ID,
+	}
+
+	if metric.MType == constants.GaugeMetricType {
+		metricRPC.MType = 0
+		metricRPC.Value = *metric.Value
+	} else {
+		metricRPC.MType = 1
+		metricRPC.Delta = *metric.Delta
+	}
+	ctx := context.Background()
+	_, err := (*client).UpdateMetric(ctx, &pb.MetricRequest{Metric: &metricRPC})
 	if err != nil {
 		return err
 	}
@@ -210,18 +234,41 @@ func generateSignature(key []byte, date []byte) []byte {
 	return h.Sum(nil)
 }
 
-func worker(ctx context.Context, c *config.Config, jobs <-chan storage.Metrics, client *http.Client, wg *sync.WaitGroup) {
-
+func workerHTTP(ctx context.Context, c *config.Config, jobs <-chan storage.Metrics, client *http.Client, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	for /*j := range jobs*/ {
+	for {
 		select {
 		case <-ctx.Done():
 			return
 
 		case j := <-jobs:
-			err := sendOneMetricUpdate(c, j, client)
+			var err error
+			if c.RPCAddr() != "" {
+				//err = sendOneMetricUpdateRPC(c, j, client)
+			} else {
+				err = sendOneMetricUpdateHTTP(c, j, client)
+			}
 			if err != nil {
+				continue
+			}
+		}
+	}
+}
+
+func workerRPC(ctx context.Context, c *config.Config, jobs <-chan storage.Metrics, client *pb.MetricsClient, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case j := <-jobs:
+			var err error
+			err = sendOneMetricUpdateRPC(c, j, client)
+
+			if err != nil {
+				log.Println(err)
 				continue
 			}
 		}
@@ -240,13 +287,35 @@ func StartMetricsMonitorWithWorkers(c *config.Config) {
 	idleConnsClosed := make(chan struct{})
 
 	client := http.Client{}
+	var clientRPC pb.MetricsClient
+
 	go collectDefaultMetrics(ctx, jobs, c)
 	go collectAdditionalMetrics(ctx, jobs, c)
 
 	var wg sync.WaitGroup
 	wg.Add(c.RateLimit())
+	useRPC := false
+
+	if c.RPCAddr() != "" {
+		useRPC = true
+		conn, err := grpc.Dial(c.RPCAddr(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			log.Println(err)
+			cancel()
+			close(jobs)
+			close(idleConnsClosed)
+			return
+		}
+		defer conn.Close()
+
+		clientRPC = pb.NewMetricsClient(conn)
+	}
 	for w := 1; w <= c.RateLimit(); w++ {
-		go worker(ctx, c, jobs, &client, &wg)
+		if useRPC {
+			go workerRPC(ctx, c, jobs, &clientRPC, &wg)
+		} else {
+			go workerHTTP(ctx, c, jobs, &client, &wg)
+		}
 	}
 
 	go func() {
@@ -258,6 +327,17 @@ func StartMetricsMonitorWithWorkers(c *config.Config) {
 	}()
 
 	<-idleConnsClosed
+}
+
+func OpenRPCClient(srvAddr string) (*pb.MetricsClient, error) {
+	conn, err := grpc.Dial(srvAddr)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	c := pb.NewMetricsClient(conn)
+	return &c, nil
 }
 
 func GetLocalIP() net.IP {

@@ -27,6 +27,7 @@ type configValues struct {
 	EncryptionKey  string
 	RateLimit      int
 	CryptoKey      string
+	AddrRPC        string
 }
 
 func parseFlags() *config.Config {
@@ -58,6 +59,11 @@ func parseFlags() *config.Config {
 	srvEndpointEnv, isExist := os.LookupEnv("ADDRESS")
 	if isExist {
 		configEnv.Address = srvEndpointEnv
+	}
+
+	rpcEndpointEnv, isExist := os.LookupEnv("RPC_ADDRESS")
+	if isExist {
+		configEnv.AddrRPC = rpcEndpointEnv
 	}
 
 	rateLimitEnv, isExist := os.LookupEnv("RATE_LIMIT")
@@ -113,6 +119,12 @@ func fillConfig(cj configJSON, cf configValues, ce configValues) *config.Config 
 		}
 	}
 
+	if checkEndpoint(ce.AddrRPC) == nil {
+		conf.SetRPCAddr(ce.AddrRPC)
+	} else if checkEndpoint(cf.AddrRPC) == nil {
+		conf.SetRPCAddr(cf.AddrRPC)
+	}
+
 	if ce.EncryptionKey != "" {
 		conf.SetEncryptionKey([]byte(ce.EncryptionKey))
 	} else {
@@ -163,7 +175,7 @@ func checkEndpoint(endpointStr string) error {
 	if err != nil {
 		return err
 	}
-	if port < 65535 && port > 0 {
+	if port > 65535 && port < 0 {
 		return constants.ErrIncorrectPortNumber
 	}
 	return nil
